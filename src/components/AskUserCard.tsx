@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { AskRequest } from '../types';
 import Markdown from './Markdown';
 import { Check, ChevronRight, Loader2, MessageCircleQuestion, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   request: AskRequest;
@@ -61,7 +63,7 @@ export default function AskUserCard({ request, onSubmit, onCancel }: Props) {
     <div className="permission-card ask-card">
       <div className="permission-head">
         <MessageCircleQuestion size={16} />
-        <strong>Grok 想问你</strong>
+        <strong>{t('Grok 想问你', 'Grok has a question')}</strong>
       </div>
 
       <div className="ask-questions">
@@ -78,7 +80,7 @@ export default function AskUserCard({ request, onSubmit, onCancel }: Props) {
               )}
               <div className="ask-question-text">
                 {q.question}
-                {q.multiSelect ? <span className="ask-multi-hint">（可多选）</span> : null}
+                {q.multiSelect ? <span className="ask-multi-hint">{t('（可多选）', '(select multiple)')}</span> : null}
               </div>
 
               {options.length > 0 && (
@@ -110,13 +112,12 @@ export default function AskUserCard({ request, onSubmit, onCancel }: Props) {
                   onClick={() => setCustomOpen((p) => ({ ...p, [qi]: true }))}
                 >
                   <ChevronRight size={11} />
-                  自定义答案
-                </button>
+                  {t('自定义答案', 'Your own answer')}</button>
               )}
               {showCustom && (
                 <input
                   className="ask-custom-input"
-                  placeholder="或输入自定义答案…"
+                  placeholder={t('或输入自定义答案…', 'Or type your own answer…')}
                   value={custom[qi] || ''}
                   onChange={(e) =>
                     setCustom((p) => ({ ...p, [qi]: e.target.value }))
@@ -131,12 +132,11 @@ export default function AskUserCard({ request, onSubmit, onCancel }: Props) {
       <div className="permission-actions">
         <button type="button" disabled={!allAnswered || submitting} onClick={() => void submit()}>
           {submitting ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-          提交
+          {t('提交', 'Submit')}
         </button>
         <button type="button" className="secondary" disabled={submitting} onClick={onCancel}>
           <X size={14} />
-          取消
-        </button>
+          {t('取消', 'Cancel')}</button>
       </div>
     </div>
   );

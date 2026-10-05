@@ -4,6 +4,8 @@ import ToolCard from './ToolCard';
 import Markdown from './Markdown';
 import CopyButton from './CopyButton';
 import { Brain, Check, ChevronRight, ListTodo, Loader2 } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   messages: ChatMessage[];
@@ -27,7 +29,7 @@ const fmtTok = (n: number) => {
 function MsgFooter({ text, ts, turnTokens }: { text: string; ts?: number; turnTokens?: number }) {
   return (
     <div className="msg-footer">
-      <CopyButton text={text} title="复制消息" />
+      <CopyButton text={text} title={t('复制消息', 'Copy message')} />
       {ts !== undefined && <time>{fmtTime(ts)}</time>}
       {turnTokens !== undefined && (
         <span className="msg-tokens">
@@ -46,7 +48,7 @@ function ThoughtBlock({ message }: { message: ChatMessage }) {
       <button type="button" className="thought-toggle" onClick={() => setOpen((v) => !v)}>
         <ChevronRight size={12} className={`tool-card-chevron ${open ? 'open' : ''}`} />
         <Brain size={13} />
-        <span>思考过程{message.streaming ? '…' : ''}</span>
+        <span>{t('思考过程', 'Thinking')}{message.streaming ? '…' : ''}</span>
       </button>
       {open && <div className="thought-body">{message.text}</div>}
       <MsgFooter text={message.text} ts={message.ts} turnTokens={message.turnTokens} />
@@ -59,7 +61,7 @@ function PlanCard({ entries }: { entries: NonNullable<ChatMessage['planEntries']
     <div className="plan-card">
       <div className="plan-head">
         <ListTodo size={14} />
-        <strong>计划</strong>
+        <strong>{t('计划', 'Plan')}</strong>
       </div>
       <ul className="plan-list">
         {entries.map((e, i) => {
@@ -125,7 +127,7 @@ export default function ChatPanel({ messages, busy, trimmed, onJumpVisibilityCha
 
   return (
     <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
-      {trimmed && <div className="trim-notice">更早的消息已从界面裁剪（仍保存在 Grok 会话中）</div>}
+      {trimmed && <div className="trim-notice">{t('更早的消息已从界面裁剪（仍保存在 Grok 会话中）', 'Older messages were trimmed from the view. They remain in the Grok session.')}</div>}
       {messages.map((m) => {
         if (m.role === 'tool') {
           return (
@@ -151,7 +153,7 @@ export default function ChatPanel({ messages, busy, trimmed, onJumpVisibilityCha
         }
         return (
           <div key={m.id} id={`msg-${m.id}`} className={`msg ${m.role} ${m.streaming ? 'streaming' : ''}`}>
-            <div className="msg-role">{m.role === 'user' ? '你' : 'Grok'}</div>
+            <div className="msg-role">{m.role === 'user' ? t('你', 'You') : 'Grok'}</div>
             {m.role === 'assistant' && !m.streaming ? (
               <div className="msg-bubble msg-body md-preview">
                 <Markdown>{m.text}</Markdown>

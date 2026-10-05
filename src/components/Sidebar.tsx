@@ -20,6 +20,7 @@ import {
   Settings,
   X,
 } from '../icons';
+import { t } from '../i18n';
 
 interface Props {
   cwd: string;
@@ -48,7 +49,7 @@ interface Props {
 
 const shortPath = (path: string) => {
   const parts = path.split('/').filter(Boolean);
-  return parts.at(-1) || path || '未选择';
+  return parts.at(-1) || path || t('未选择', 'Nothing selected');
 };
 
 export default function Sidebar({
@@ -187,7 +188,7 @@ export default function Sidebar({
     try {
       const markdown = await invoke<string>('export_session', { sessionId: s.id });
       await navigator.clipboard.writeText(markdown);
-      showToast('已复制会话 Markdown');
+      showToast(t('已复制会话 Markdown', 'Session Markdown copied'));
     } catch (e) {
       onError(String(e));
     } finally {
@@ -198,18 +199,18 @@ export default function Sidebar({
   const copyId = async (s: SessionEntry) => {
     try {
       await navigator.clipboard.writeText(s.id);
-      showToast('已复制 Session ID');
+      showToast(t('已复制 Session ID', 'Session ID copied'));
     } catch (e) {
       onError(String(e));
     }
   };
 
   const deleteSession = async (s: SessionEntry) => {
-    if (!window.confirm(`删除会话「${s.title || s.id.slice(0, 8)}」？此操作不可恢复。`)) return;
+    if (!window.confirm(t(`删除会话「${s.title || s.id.slice(0, 8)}」？此操作不可恢复。`, `Delete session “${s.title || s.id.slice(0, 8)}”? This cannot be undone.`))) return;
     setBusyId(s.id);
     try {
       const res = await invoke<CmdResult>('delete_session', { sessionId: s.id });
-      if (!res.ok) throw new Error(res.output || '删除失败');
+      if (!res.ok) throw new Error(res.output || t('删除失败', 'Delete failed'));
       onSessionsChanged();
     } catch (e) {
       onError(String(e));
@@ -256,7 +257,7 @@ export default function Sidebar({
       });
       onSessionsChanged();
       const newId = String(res?.newSessionId || '');
-      showToast(`已分叉（新会话 ${newId ? `${newId.slice(0, 8)}…` : '已创建'}）`);
+      showToast(t(`已分叉（新会话 ${newId ? `${newId.slice(0, 8)}…` : '已创建'}）`, `Forked (new session ${newId ? `${newId.slice(0, 8)}…` : 'created'})`));
     } catch (e) {
       onError(String(e));
     } finally {
@@ -268,8 +269,8 @@ export default function Sidebar({
     setBusyId(s.id);
     try {
       const res = await invoke<CmdResult>('export_trace', { sessionId: s.id });
-      if (!res.ok) throw new Error(res.output || '导出失败');
-      showToast(`trace 已导出：${truncateMiddle(res.output.trim())}`);
+      if (!res.ok) throw new Error(res.output || t('导出失败', 'Export failed'));
+      showToast(t(`trace 已导出：${truncateMiddle(res.output.trim())}`, `Trace exported: ${truncateMiddle(res.output.trim())}`));
     } catch (e) {
       onError(String(e));
     } finally {
@@ -293,8 +294,8 @@ export default function Sidebar({
       <button
         type="button"
         className={`session-gutter-pin ${pinSet.has(s.id) ? 'pinned' : ''}`}
-        title={pinSet.has(s.id) ? '取消置顶' : '置顶'}
-        aria-label={pinSet.has(s.id) ? '取消置顶' : '置顶'}
+        title={pinSet.has(s.id) ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}
+        aria-label={pinSet.has(s.id) ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}
         onClick={(e) => {
           e.stopPropagation();
           onTogglePin(s.id);
@@ -306,7 +307,7 @@ export default function Sidebar({
         <InlineRename
           initial={s.title}
           busy={busyId === s.id}
-          placeholder="会话名称"
+          placeholder={t('会话名称', 'Session name')}
           onSubmit={(value) => void submitRename(ws, s, value)}
           onCancel={() => setRenamingId('')}
         />
@@ -320,15 +321,15 @@ export default function Sidebar({
             onMouseLeave={marqueeLeave}
           >
             <span className="title">
-              <span className="marquee-text">{s.title || '未命名会话'}</span>
+              <span className="marquee-text">{s.title || t('未命名会话', 'Untitled session')}</span>
             </span>
             {busyId === s.id && <Loader2 size={12} className="spin row-busy" />}
           </button>
           <button
             type="button"
             className="icon-btn tiny row-more-btn"
-            title="更多操作"
-            aria-label={`会话 ${s.title || s.id.slice(0, 8)} 更多操作`}
+            title={t('更多操作', 'More actions')}
+            aria-label={t(`会话 ${s.title || s.id.slice(0, 8)} 更多操作`, `More actions for ${s.title || s.id.slice(0, 8)}`)}
             onClick={(e) => {
               e.stopPropagation();
               const r = e.currentTarget.getBoundingClientRect();
@@ -346,17 +347,17 @@ export default function Sidebar({
     return (
       <aside className="sidebar sidebar-collapsed">
         <div className="sidebar-drag-strip" data-tauri-drag-region aria-hidden />
-        <button className="icon-btn" type="button" title="展开侧栏" onClick={onToggleCollapsed}>
+        <button className="icon-btn" type="button" title={t('展开侧栏', 'Show sidebar')} onClick={onToggleCollapsed}>
           <PanelLeftOpen size={16} />
         </button>
-        <button className="icon-btn" type="button" title="新建任务 ⌘N" onClick={onNewSession}>
+        <button className="icon-btn" type="button" title={t('新建任务 ⌘N', 'New task ⌘N')} onClick={onNewSession}>
           <MessageSquarePlus size={16} />
         </button>
         <div className="sidebar-collapsed-spacer" />
-        <button className="icon-btn" type="button" title="Grok 用量" onClick={onOpenUsage}>
+        <button className="icon-btn" type="button" title={t('Grok 用量', 'Grok usage')} onClick={onOpenUsage}>
           <ChartColumn size={16} />
         </button>
-        <button className="icon-btn" type="button" title="设置 ⌘," onClick={onOpenSettings}>
+        <button className="icon-btn" type="button" title={t('设置 ⌘,', 'Settings ⌘,')} onClick={onOpenSettings}>
           <Settings size={16} />
         </button>
       </aside>
@@ -366,7 +367,7 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-topnav" data-tauri-drag-region>
-        <button className="icon-btn" type="button" title="收起侧栏" onClick={onToggleCollapsed}>
+        <button className="icon-btn" type="button" title={t('收起侧栏', 'Collapse sidebar')} onClick={onToggleCollapsed}>
           <PanelLeftClose size={16} />
         </button>
         <div className="brand" data-tauri-drag-region>
@@ -378,7 +379,7 @@ export default function Sidebar({
       <div className="sidebar-actions">
         <button className="side-action" type="button" onClick={onNewSession}>
           <MessageSquarePlus size={16} />
-          <span>新建任务</span>
+          <span>{t('新建任务', 'New task')}</span>
           <kbd>⌘N</kbd>
         </button>
       </div>
@@ -388,11 +389,11 @@ export default function Sidebar({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜索会话…"
-          aria-label="搜索会话"
+          placeholder={t('搜索会话…', 'Search sessions…')}
+          aria-label={t('搜索会话', 'Search sessions')}
         />
         {query && (
-          <button className="icon-btn tiny" type="button" title="清空" onClick={() => setQuery('')}>
+          <button className="icon-btn tiny" type="button" title={t('清空', 'Clear')} onClick={() => setQuery('')}>
             <X size={12} />
           </button>
         )}
@@ -400,14 +401,14 @@ export default function Sidebar({
 
       <div className="sidebar-scroll">
         <div className="section-label sessions-label">
-          工作区与会话
+          {t('工作区与会话', 'Workspaces and sessions')}
           {searching && <Loader2 size={12} className="spin" />}
         </div>
 
         {isSearching ? (
           <div className="session-block">
             {!searchVisible.length && (
-              <p className="muted pad-sm">{searching ? '搜索中…' : '没有匹配的会话'}</p>
+              <p className="muted pad-sm">{searching ? t('搜索中…', 'Searching…') : t('没有匹配的会话', 'No matching sessions')}</p>
             )}
             {searchVisible.map((s) => renderSessionRow(cwd, s))}
           </div>
@@ -422,8 +423,8 @@ export default function Sidebar({
                     <button
                       type="button"
                       className="ws-chevron"
-                      title={isCollapsed ? '展开' : '折叠'}
-                      aria-label={isCollapsed ? '展开工作区' : '折叠工作区'}
+                      title={isCollapsed ? t('展开', 'Expand') : t('折叠', 'Collapse')}
+                      aria-label={isCollapsed ? t('展开工作区', 'Expand workspace') : t('折叠工作区', 'Collapse workspace')}
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleWorkspace(w);
@@ -449,7 +450,7 @@ export default function Sidebar({
                     <button
                       type="button"
                       className="icon-btn tiny ws-finder-btn"
-                      title="在访达中打开"
+                      title={t('在访达中打开', 'Show in Finder')}
                       onClick={(e) => {
                         e.stopPropagation();
                         revealInFinder(w);
@@ -460,7 +461,7 @@ export default function Sidebar({
                   </div>
                   {!isCollapsed && (
                     <div className="ws-sessions">
-                      {!list.length && <p className="muted ws-empty">暂无会话</p>}
+                      {!list.length && <p className="muted ws-empty">{t('暂无会话', 'No sessions')}</p>}
                       {list.map((s) => renderSessionRow(w, s))}
                     </div>
                   )}
@@ -468,11 +469,11 @@ export default function Sidebar({
               );
             })}
             <button type="button" className="show-more" onClick={onChooseFolder}>
-              <Plus size={12} /> 添加工作区…
+              <Plus size={12} /> {t('添加工作区…', 'Add workspace…')}
             </button>
             {hiddenCount > 0 && (
               <button type="button" className="show-more" onClick={() => setShowHidden((v) => !v)}>
-                {showHidden ? '收起已隐藏' : `显示已隐藏（${hiddenCount}）`}
+                {showHidden ? t('收起已隐藏', 'Hide hidden sessions') : t(`显示已隐藏（${hiddenCount}）`, `Show hidden (${hiddenCount})`)}
               </button>
             )}
           </div>
@@ -482,10 +483,10 @@ export default function Sidebar({
       <div className="sidebar-footer">
         <button className="sidebar-settings" type="button" onClick={onOpenSettings}>
           <Settings size={16} />
-          <span>设置</span>
+          <span>{t('设置', 'Settings')}</span>
           <kbd>⌘,</kbd>
         </button>
-        <button className="icon-btn" type="button" title="Grok 用量" onClick={onOpenUsage}>
+        <button className="icon-btn" type="button" title={t('Grok 用量', 'Grok usage')} onClick={onOpenUsage}>
           <ChartColumn size={16} />
         </button>
       </div>
@@ -528,14 +529,14 @@ export default function Sidebar({
               className="modal usage-modal"
               role="dialog"
               aria-modal="true"
-              aria-label="会话用量"
+              aria-label={t('会话用量', 'Session usage')}
             >
               <div className="modal-header">
-                <strong>会话用量 · {usage.id.slice(0, 8)}</strong>
+                <strong>{t('会话用量', 'Session usage')} · {usage.id.slice(0, 8)}</strong>
                 <button
                   className="icon-btn"
                   type="button"
-                  title="关闭"
+                  title={t('关闭', 'Close')}
                   onClick={() => setUsage(null)}
                 >
                   <X size={16} />

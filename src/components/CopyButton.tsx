@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { Check, Copy } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   text: string;
@@ -8,7 +10,7 @@ interface Props {
   size?: number;
 }
 
-export default function CopyButton({ text, className = '', title = '复制', size = 12 }: Props) {
+export default function CopyButton({ text, className = '', title = t('复制', 'Copy'), size = 12 }: Props) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | null>(null);
 
@@ -29,8 +31,8 @@ export default function CopyButton({ text, className = '', title = '复制', siz
       type="button"
       className={`copy-btn ${copied ? 'done' : ''} ${className}`}
       onClick={(e) => void copy(e)}
-      title={copied ? '已复制' : title}
-      aria-label={copied ? '已复制' : title}
+      title={copied ? t('已复制', 'Copied') : title}
+      aria-label={copied ? t('已复制', 'Copied') : title}
     >
       {copied ? <Check size={size} /> : <Copy size={size} />}
     </button>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { PERMISSION_MODES } from '../types';
+import { permissionModes } from '../types';
 import { FolderOpen, MessageSquarePlus, Shield, Zap } from '../icons';
 import grokLogo from '../assets/grok-logo.png';
+import { t } from '../i18n';
+
 
 interface Props {
   mode: string;
@@ -29,28 +31,26 @@ export default function HomeHero({
     return () => window.removeEventListener('click', close);
   }, [modeOpen]);
 
-  const modeLabel = PERMISSION_MODES.find((m) => m.id === mode)?.label || '计划';
+  const modeLabel = permissionModes().find((m) => m.id === mode)?.label || t('计划', 'Plan');
 
   return (
     <div className="home-hero">
       <div className="home-brand" aria-hidden>
         <img src={grokLogo} alt="" draggable={false} />
       </div>
-      <h1 className="home-greeting">准备构建什么？</h1>
+      <h1 className="home-greeting">{t('准备构建什么？', 'What should we build?')}</h1>
       <div className="quick-chips">
         <button className="quick-chip" type="button" onClick={onChooseFolder}>
           <FolderOpen size={14} />
-          选择工作区
-        </button>
+          {t('选择工作区', 'Choose workspace')}</button>
         <button className="quick-chip" type="button" onClick={onNewSession}>
           <MessageSquarePlus size={14} />
-          新建任务
-        </button>
+          {t('新建任务', 'New task')}</button>
         <span className="home-mode-wrap">
           <button
             className="quick-chip"
             type="button"
-            title="新会话的默认权限模式"
+            title={t('新会话的默认权限模式', 'Default permission mode for new sessions')}
             onClick={(e) => {
               e.stopPropagation();
               setModeOpen((v) => !v);
@@ -61,7 +61,7 @@ export default function HomeHero({
           </button>
           {modeOpen && (
             <div className="dropdown-menu home-mode-menu" onClick={(e) => e.stopPropagation()}>
-              {PERMISSION_MODES.map((m) => (
+              {permissionModes().map((m) => (
                 <button
                   key={m.id}
                   type="button"
@@ -81,12 +81,11 @@ export default function HomeHero({
         <button
           className={`quick-chip sp-chip ${spEnabled ? 'on' : ''}`}
           type="button"
-          title="新会话开启 superpowers 重型工程模式"
+          title={t('新会话开启 superpowers 重型工程模式', 'Start new sessions with the superpowers plugin')}
           onClick={onToggleSp}
         >
           <Zap size={14} />
-          SP 超能
-        </button>
+          {t('SP 超能', 'Superpowers')}</button>
       </div>
     </div>
   );

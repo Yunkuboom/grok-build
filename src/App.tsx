@@ -20,6 +20,7 @@ import UsageModal from './components/UsageModal';
 import PermissionCard from './components/PermissionCard';
 import AskUserCard from './components/AskUserCard';
 import PlanExitCard from './components/PlanExitCard';
+import { applyLocalePref, useI18n, t} from './i18n';
 import {
   DEFAULT_CONFIG,
   EFFORT_FALLBACK,
@@ -63,6 +64,7 @@ function resolveEffectiveTheme(pref: ThemePreference): EffectiveTheme {
 }
 
 export default function App() {
+  useI18n();
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [cwd, setCwd] = useState('');
@@ -211,10 +213,14 @@ export default function App() {
   // ——— 配置 ———
   const saveConfig = useCallback((patch: Partial<AppConfig>) => {
     const next = { ...configRef.current, ...patch };
+    if (patch.locale !== undefined) {
+      applyLocalePref(next.locale);
+      invoke('set_ui_language', { lang: next.locale }).catch(() => {});
+    }
     setConfig(next);
     invoke<AppConfig>('save_app_config', { config: next })
       .then((saved) => setConfig(saved))
-      .catch((e) => setError(`设置保存失败：${String(e)}`));
+      .catch((e) => setError(t(`设置保存失败：${String(e)}`, `Could not save settings: ${String(e)}`)));
   }, []);
 
   const applyCwd = useCallback(
@@ -262,6 +268,8 @@ export default function App() {
       try {
         const cfg = await invoke<AppConfig>('get_app_config');
         const merged = { ...DEFAULT_CONFIG, ...cfg };
+        applyLocalePref(merged.locale);
+        invoke('set_ui_language', { lang: merged.locale || 'system' }).catch(() => {});
         setConfig(merged);
         setCwd(cfg.lastCwd || '');
         setModel(cfg.model || '');
@@ -400,11 +408,11 @@ export default function App() {
         setAskRequest(null);
         setExitPlan(null);
         setMessages((items) => items.map((m) => ({ ...m, streaming: false })));
-        setError(payload.error || 'Grok 请求失败');
+        setError(payload.error || t('Grok 请求失败', 'Grok request failed'));
         return;
       }
       if (payload.kind === 'protocol_error') {
-        setError(payload.error || 'ACP 协议错误');
+        setError(payload.error || t('ACP 协议错误', 'ACP protocol error'));
         return;
       }
       if (payload.kind === 'request' && payload.method === 'session/request_permission') {
@@ -499,7 +507,7 @@ export default function App() {
         });
       } else if (kind === 'tool_call') {
         const toolId = String(update.toolCallId || uid('tool'));
-        const title = String(update.title || update.toolCallId || '工具调用');
+        const title = String(update.title || update.toolCallId || t('工具调用', 'Tool call'));
         const status = String(update.status || 'in_progress');
         const detail = textFrom(update.content ?? '');
         setMessages((items) => [
@@ -522,7 +530,7 @@ export default function App() {
                 role: 'tool' as const,
                 text: detail,
                 toolId,
-                toolTitle: title || '工具调用',
+                toolTitle: title || t('工具调用', 'Tool call'),
                 toolStatus: status || 'in_progress',
                 ts: Date.now(),
               },
@@ -603,7 +611,7 @@ export default function App() {
     ): Promise<SessionResult | undefined> => {
       const dir = cwdOverride || cwdRef.current;
       if (!dir) {
-        setError('请先选择工作区文件夹');
+        setError(t('请先选择工作区文件夹', 'Choose a workspace folder first'));
         return undefined;
       }
       setBusy(true);
@@ -700,7 +708,7 @@ export default function App() {
       });
       setAttachments([]);
       if (res?.skipped?.length) {
-        setError(`部分附件未发送：${res.skipped.join('、')}`);
+        setError(t(`部分附件未发送：${res.skipped.join('、')}`, `Some attachments were not sent: ${res.skipped.join(', ')}`));
       }
     } catch (e) {
       setBusy(false);
@@ -933,7 +941,7 @@ export default function App() {
       setRenameBusy(true);
       try {
         const res = await invoke<CmdResult>('rename_session', { cwd: ws, sessionId: id, title });
-        if (!res.ok) throw new Error(res.output || '重命名失败');
+        if (!res.ok) throw new Error(res.output || t('重命名失败', 'Rename failed'));
         setSessionsByCwd((prev) => ({
           ...prev,
           [ws]: (prev[ws] || []).map((s) => (s.id === id ? { ...s, title } : s)),
@@ -993,18 +1001,18 @@ export default function App() {
       }
     }
     if (!note) {
-      setError('没有可记住的内容');
+      setError(t('没有可记住的内容', 'Nothing to remember'));
       return;
     }
     if (!cwdRef.current) {
-      setError('请先选择工作区文件夹');
+      setError(t('请先选择工作区文件夹', 'Choose a workspace folder first'));
       return;
     }
     setRememberState('saving');
     try {
       const res = await invoke<MemoryFile>('append_memory_note', { cwd: cwdRef.current, note });
       setRememberState('done');
-      flashNotice(`已记住 → ${res.label || res.path}`);
+      flashNotice(t(`已记住 → ${res.label || res.path}`, `Remembered → ${res.label || res.path}`));
       if (rememberTimer.current) window.clearTimeout(rememberTimer.current);
       rememberTimer.current = window.setTimeout(() => setRememberState('idle'), 1500);
     } catch (e) {
@@ -1089,7 +1097,7 @@ export default function App() {
                       <InlineRename
                         initial={activeTitle}
                         busy={renameBusy}
-                        placeholder="会话名称"
+                        placeholder={t('会话名称', 'Session name')}
                         onSubmit={(value) => {
                           setHeaderRenaming(false);
                           if (value && value !== activeTitle && activeSessionId)
@@ -1100,12 +1108,12 @@ export default function App() {
                     ) : (
                       <>
                         <span className="session-title-text" data-tauri-drag-region>
-                          {activeTitle || '未命名会话'}
+                          {activeTitle || t('未命名会话', 'Untitled session')}
                         </span>
                         <button
                           className="icon-btn tiny soft"
                           type="button"
-                          title="重命名会话"
+                          title={t('重命名会话', 'Rename session')}
                           onClick={() => setHeaderRenaming(true)}
                         >
                           <Pencil size={12} />
@@ -1118,7 +1126,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`sp-toggle ${config.spEnabled ? 'on' : ''}`}
-                    title="superpowers 超能模式（当前会话）"
+                    title={t('superpowers 超能模式（当前会话）', 'superpowers mode (this session)')}
                     disabled={spBusy}
                     onClick={toggleSp}
                   >
@@ -1127,12 +1135,12 @@ export default function App() {
                   </button>
                   <span className={`status-pill quiet ${status?.authenticated ? '' : 'warn'}`}>
                     <i className={`dot ${status?.authenticated ? '' : 'err'}`} />
-                    {status?.authenticated ? 'Grok 已连接' : '需要登录'}
+                    {status?.authenticated ? t('Grok 已连接', 'Grok connected') : t('需要登录', 'Sign-in required')}
                   </span>
                   <button
                     className={`icon-btn ${terminalOpen ? 'active' : ''}`}
                     type="button"
-                    title="终端"
+                    title={t('终端', 'Terminal')}
                     onClick={() => setTerminalOpen((v) => !v)}
                   >
                     <SquareTerminal size={16} />
@@ -1140,7 +1148,7 @@ export default function App() {
                   <button
                     className={`icon-btn ${rightDock === 'files' ? 'active' : ''}`}
                     type="button"
-                    title="文件 / Diff"
+                    title={t('文件 / Diff', 'Files / diff')}
                     onClick={() => setRightDock((d) => (d === 'files' ? null : 'files'))}
                   >
                     <Files size={16} />
@@ -1156,7 +1164,7 @@ export default function App() {
                   <button
                     className={`icon-btn ${rightDock === 'artifacts' ? 'active' : ''}`}
                     type="button"
-                    title="产出物"
+                    title={t('产出物', 'Artifacts')}
                     onClick={() => setRightDock((d) => (d === 'artifacts' ? null : 'artifacts'))}
                   >
                     <PanelRight size={16} />
@@ -1178,7 +1186,7 @@ export default function App() {
                     {error && (
                       <div className="error-banner">
                         <span>{error}</span>
-                        <button type="button" aria-label="关闭错误" onClick={() => setError('')}>
+                        <button type="button" aria-label={t('关闭错误', 'Dismiss error')} onClick={() => setError('')}>
                           ×
                         </button>
                       </div>
@@ -1211,12 +1219,11 @@ export default function App() {
                       onClick={() => jumpRef.current?.()}
                     >
                       <ArrowDown size={13} />
-                      最新消息
-                    </button>
+                      {t('最新消息', 'Latest message')}</button>
                     {error && (
                       <div className="error-banner">
                         <span>{error}</span>
-                        <button type="button" aria-label="关闭错误" onClick={() => setError('')}>
+                        <button type="button" aria-label={t('关闭错误', 'Dismiss error')} onClick={() => setError('')}>
                           ×
                         </button>
                       </div>

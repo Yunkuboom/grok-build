@@ -9,13 +9,25 @@ use tokio::time::{timeout, Duration};
 
 const IDENTITY_MARKER: &str = "<!-- grok-build-identity -->";
 
-const MEMO_KB_RULES: &str = r#"MEMO COLD KNOWLEDGE BASE (capability switch ON):
+const MEMO_KB_RULES_EN: &str = r#"MEMO COLD KNOWLEDGE BASE (capability switch ON):
 - This is an optional local cold knowledge base. Retrieve on demand only when the user asks about past notes or you need prior context not already in MEMORY.md.
 - Use Bash (read-only): `memo-kb search 'QUERY' --json --topk 5`
 - If `memo-kb` is not on PATH, a user-provided script at `~/.grok-builder/memo-retrieval.py` may be called the same way: `python3 ~/.grok-builder/memo-retrieval.py search 'QUERY'`
 - Do not dump the knowledge base into context.
 - Do not write or archive into the knowledge base from this agent.
-- If the tool fails or the knowledge base is unavailable, tell the user 「知识库暂不可用」."#;
+- If the tool fails or the knowledge base is unavailable, tell the user that the knowledge base is unavailable."#;
+
+const MEMO_KB_RULES_ZH: &str = r#"MEMO 冷知识库（开关已打开）：
+- 这是可选的本地冷知识库。只有用户询问过往笔记，或 MEMORY.md 里没有所需上下文时才检索。
+- 只读 Bash：`memo-kb search 'QUERY' --json --topk 5`
+- 如果 PATH 里没有 `memo-kb`，可以同样调用用户自己的脚本：`python3 ~/.grok-builder/memo-retrieval.py search 'QUERY'`
+- 不要把整个知识库倒进上下文。
+- 不要从这个 agent 写入或归档知识库。
+- 工具失败或知识库不可用时，告诉用户「知识库暂不可用」。"#;
+
+fn memo_rules() -> &'static str {
+    if crate::i18n::is_en() { MEMO_KB_RULES_EN } else { MEMO_KB_RULES_ZH }
+}
 
 const ADHD_FALLBACK: &str = r#"# i-have-adhd (embedded fallback)
 Lead with the next action. Number multi-step tasks. End with one concrete next step.
@@ -73,7 +85,7 @@ pub fn compose_rules(cfg: &AppConfig) -> String {
         blocks.push(load_adhd_body());
     }
     if cfg.memo_kb_enabled {
-        blocks.push(MEMO_KB_RULES.to_string());
+        blocks.push(memo_rules().to_string());
     }
     blocks.join("\n\n")
 }
@@ -153,7 +165,7 @@ pub async fn list_memory_files() -> Result<Vec<MemoryFile>, String> {
         let mut out = vec![memory_file_info(
             &root.join("MEMORY.md"),
             "global",
-            "全局记忆",
+            &crate::i18n::t("全局记忆", "Global memory"),
         )];
         if let Ok(rd) = std::fs::read_dir(&root) {
             let mut dirs: Vec<PathBuf> = rd
@@ -192,12 +204,12 @@ fn resolve_memory_path(path: &str, create_dirs: bool) -> Result<PathBuf, String>
         .components()
         .any(|c| matches!(c, std::path::Component::ParentDir))
     {
-        return Err("路径越界：不允许 ..".into());
+        return Err(crate::i18n::t("路径越界：不允许 ..", "Path is not allowed: .."));
     }
     let resolved = if target.exists() {
         target.canonicalize().map_err(|e| e.to_string())?
     } else {
-        let parent = target.parent().ok_or_else(|| "无效路径".to_string())?;
+        let parent = target.parent().ok_or_else(|| crate::i18n::t("无效路径", "Invalid path"))?;
         if create_dirs {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
@@ -205,10 +217,10 @@ fn resolve_memory_path(path: &str, create_dirs: bool) -> Result<PathBuf, String>
         let parent_canon = parent
             .canonicalize()
             .unwrap_or_else(|_| parent.to_path_buf());
-        parent_canon.join(target.file_name().ok_or_else(|| "无效路径".to_string())?)
+        parent_canon.join(target.file_name().ok_or_else(|| crate::i18n::t("无效路径", "Invalid path"))?)
     };
     if !resolved.starts_with(&root_canon) && !resolved.starts_with(&root) {
-        return Err("路径越界：仅限 ~/.grok/memory/ 内的文件".into());
+        return Err(crate::i18n::t("路径越界：仅限 ~/.grok/memory/ 内的文件", "Path is outside ~/.grok/memory/"));
     }
     Ok(resolved)
 }
@@ -243,7 +255,7 @@ pub async fn write_memory_file(path: String, content: String) -> Result<MemoryFi
             "workspace"
         };
         let label = if scope == "global" {
-            "全局记忆".to_string()
+            crate::i18n::t("全局记忆", "Global memory")
         } else {
             target
                 .parent()
@@ -262,7 +274,7 @@ pub async fn append_memory_note(cwd: String, note: String) -> Result<MemoryFile,
     tauri::async_runtime::spawn_blocking(move || {
         let note = note.trim().to_string();
         if note.is_empty() {
-            return Err("备注内容不能为空".to_string());
+            return Err(crate::i18n::t("备注内容不能为空", "The note cannot be empty"));
         }
         let root = memory_root();
         std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
@@ -311,7 +323,7 @@ pub async fn append_memory_note(cwd: String, note: String) -> Result<MemoryFile,
             "workspace"
         };
         let label = if scope == "global" {
-            "全局记忆".to_string()
+            crate::i18n::t("全局记忆", "Global memory")
         } else {
             target
                 .parent()
@@ -333,11 +345,11 @@ pub async fn open_memory_folder() -> Result<(), String> {
         .arg(&root)
         .status()
         .await
-        .map_err(|e| format!("无法打开访达：{e}"))?;
+        .map_err(|e| (if crate::i18n::is_en() { format!("Could not open Finder: {e}") } else { format!("无法打开访达：{e}") }))?;
     if status.success() {
         Ok(())
     } else {
-        Err("open 命令失败".into())
+        Err(crate::i18n::t("open 命令失败", "The open command failed"))
     }
 }
 
@@ -375,7 +387,7 @@ fn memo_script_path() -> Option<PathBuf> {
 async fn run_probe(mut cmd: Command, secs: u64) -> Result<String, String> {
     let o = timeout(Duration::from_secs(secs), cmd.output())
         .await
-        .map_err(|_| "命令超时".to_string())?
+        .map_err(|_| crate::i18n::t("命令超时", "Command timed out"))?
         .map_err(|e| e.to_string())?;
     let mut text = String::from_utf8_lossy(&o.stdout).to_string();
     if !o.status.success() {
@@ -411,13 +423,13 @@ pub async fn memo_kb_status() -> Result<MemoStatus, String> {
             Ok(_) => {
                 return Ok(MemoStatus {
                     available: true,
-                    detail: format!("memo-kb 可用（{bin}）"),
+                    detail: (if crate::i18n::is_en() { format!("memo-kb is available ({bin})") } else { format!("memo-kb 可用（{bin}）") }),
                 });
             }
-            Err(e) => reasons.push(format!("memo-kb 探测失败：{e}")),
+            Err(e) => reasons.push((if crate::i18n::is_en() { format!("memo-kb check failed: {e}") } else { format!("memo-kb 探测失败：{e}") })),
         }
     } else {
-        reasons.push("memo-kb 未安装".into());
+        reasons.push(crate::i18n::t("memo-kb 未安装", "memo-kb is not installed"));
     }
     if let Some(script) = memo_script_path() {
         let mut c = Command::new("python3");
@@ -426,13 +438,13 @@ pub async fn memo_kb_status() -> Result<MemoStatus, String> {
             Ok(_) => {
                 return Ok(MemoStatus {
                     available: true,
-                    detail: format!("memo-kb 不可用，回退脚本可用（{}）", script.display()),
+                    detail: if crate::i18n::is_en() { format!("memo-kb is unavailable; fallback script is available ({})", script.display()) } else { format!("memo-kb 不可用，回退脚本可用（{}）", script.display()) },
                 });
             }
-            Err(e) => reasons.push(format!("回退脚本探测失败：{e}")),
+            Err(e) => reasons.push((if crate::i18n::is_en() { format!("Fallback script check failed: {e}") } else { format!("回退脚本探测失败：{e}") })),
         }
     } else {
-        reasons.push("回退脚本也不存在".into());
+        reasons.push(crate::i18n::t("回退脚本也不存在", "The fallback script does not exist either"));
     }
     Ok(MemoStatus {
         available: false,
@@ -444,7 +456,7 @@ pub async fn memo_kb_status() -> Result<MemoStatus, String> {
 pub async fn memo_kb_search(query: String) -> Result<CmdResult, String> {
     let query = query.trim().to_string();
     if query.is_empty() {
-        return Err("搜索词不能为空".into());
+        return Err(crate::i18n::t("搜索词不能为空", "The search text cannot be empty"));
     }
     if let Some(bin) = which_memo_kb().await {
         let mut c = Command::new(&bin);
@@ -456,7 +468,7 @@ pub async fn memo_kb_search(query: String) -> Result<CmdResult, String> {
             }),
             Err(e) => Ok(CmdResult {
                 ok: false,
-                output: format!("memo-kb 检索失败：{e}"),
+                output: (if crate::i18n::is_en() { format!("memo-kb search failed: {e}") } else { format!("memo-kb 检索失败：{e}") }),
             }),
         };
     }
@@ -470,12 +482,12 @@ pub async fn memo_kb_search(query: String) -> Result<CmdResult, String> {
             }),
             Err(e) => Ok(CmdResult {
                 ok: false,
-                output: format!("回退脚本检索失败：{e}"),
+                output: (if crate::i18n::is_en() { format!("Fallback script search failed: {e}") } else { format!("回退脚本检索失败：{e}") }),
             }),
         };
     }
     Ok(CmdResult {
         ok: false,
-        output: "知识库暂不可用：memo-kb 未安装，回退脚本也不存在".into(),
+        output: crate::i18n::t("知识库暂不可用：memo-kb 未安装，回退脚本也不存在", "Knowledge base unavailable: memo-kb is not installed and the fallback script is missing"),
     })
 }

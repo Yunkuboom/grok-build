@@ -1,3 +1,4 @@
+import { t } from './i18n';
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 export type AppConfig = {
@@ -14,6 +15,8 @@ export type AppConfig = {
   hiddenSessions: string[];
   collapsedWorkspaces: string[];
   spEnabled: boolean;
+  /** "system" follows the OS language. "zh" and "en" are explicit. */
+  locale: 'system' | 'zh' | 'en' | string;
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -30,6 +33,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   hiddenSessions: [],
   collapsedWorkspaces: [],
   spEnabled: false,
+  locale: 'system',
 };
 
 export type ModelInfo = { id: string; name: string; isDefault: boolean };
@@ -266,19 +270,21 @@ export function guessMime(path: string): string {
 
 export type PermissionModeMeta = { id: string; label: string; hint: string; warn?: boolean };
 
-export const PERMISSION_MODES: PermissionModeMeta[] = [
-  { id: 'plan', label: '计划', hint: '先给出方案，经你确认后再动手（兼容模式）' },
-  { id: 'default', label: '询问', hint: '官方默认：只读操作自动放行，其余逐项请求批准' },
-  { id: 'acceptEdits', label: '接受编辑', hint: '文件编辑不再询问，其余仍请求批准' },
-  { id: 'auto', label: '自动', hint: '安全检查允许的直接执行，存疑的升级询问或阻止' },
-  { id: 'dontAsk', label: '不询问', hint: '仅放行预批准工具和只读命令（CI 严格白名单）' },
+export function permissionModes(): PermissionModeMeta[] {
+  return [
+  { id: 'plan', label: t('计划', 'Plan'), hint: t('先给出方案，经你确认后再动手（兼容模式）', 'Propose a plan and wait for your approval (compatibility mode)') },
+  { id: 'default', label: t('询问', 'Ask'), hint: t('官方默认：只读操作自动放行，其余逐项请求批准', 'Official default: read-only actions run, everything else asks') },
+  { id: 'acceptEdits', label: t('接受编辑', 'Accept edits'), hint: t('文件编辑不再询问，其余仍请求批准', 'File edits run without asking; other actions still ask') },
+  { id: 'auto', label: t('自动', 'Auto'), hint: t('安全检查允许的直接执行，存疑的升级询问或阻止', 'Run what safety checks allow; ask or block when unsure') },
+  { id: 'dontAsk', label: t('不询问', "Don't ask"), hint: t('仅放行预批准工具和只读命令（CI 严格白名单）', 'Only pre-approved tools and read-only commands (strict CI allowlist)') },
   {
     id: 'bypassPermissions',
-    label: '始终批准',
-    hint: '所有工具调用免询问；deny 规则和 hooks 仍生效，谨慎使用',
+    label: t('始终批准', 'Always approve'),
+    hint: t('所有工具调用免询问；deny 规则和 hooks 仍生效，谨慎使用', 'Tools run without asking. Deny rules and hooks still apply. Use with care'),
     warn: true,
   },
-];
+  ];
+}
 
 export const EFFORT_FALLBACK: ConfigOptionValue[] = [
   { value: 'low', label: 'Low' },

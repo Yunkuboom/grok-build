@@ -177,6 +177,11 @@ pub fn emit_acp(app: &AppHandle, payload: Value) {
     let _ = event_tx().send(json!({"event":"acp-event","payload":payload}));
 }
 
+pub fn emit_event(app: &AppHandle, event: &str, payload: &Value) {
+    let _ = app.emit(event, payload);
+    let _ = event_tx().send(json!({"event": event, "payload": payload}));
+}
+
 pub fn emit_state(app: &AppHandle) {
     let snap = serde_json::to_value(live_snapshot()).unwrap_or(Value::Null);
     let _ = app.emit("companion-state", &snap);
@@ -352,7 +357,7 @@ fn ensure_registered_workspace(cwd: &str) -> Result<(), String> {
     if workspace_is_registered(cwd, candidates) {
         Ok(())
     } else {
-        Err("该目录尚未在桌面端登记为工作区".into())
+        Err(crate::i18n::t("该目录尚未在桌面端登记为工作区", "This folder is not a registered desktop workspace"))
     }
 }
 
@@ -390,7 +395,7 @@ fn arg_str(args: &Value, camel: &str, snake: &str) -> Result<String, String> {
     arg(args, camel, snake)
         .and_then(Value::as_str)
         .map(|s| s.to_string())
-        .ok_or_else(|| format!("缺少参数 {camel}"))
+        .ok_or_else(|| (if crate::i18n::is_en() { format!("Missing argument {camel}") } else { format!("缺少参数 {camel}") }))
 }
 
 fn arg_str_or(args: &Value, camel: &str, snake: &str, default: &str) -> String {
@@ -414,7 +419,7 @@ fn arg_opt_bool(args: &Value, camel: &str, snake: &str) -> Option<bool> {
 fn arg_u64(args: &Value, camel: &str, snake: &str) -> Result<u64, String> {
     arg(args, camel, snake)
         .and_then(|v| v.as_u64().or_else(|| v.as_i64().map(|i| i as u64)))
-        .ok_or_else(|| format!("缺少参数 {camel}"))
+        .ok_or_else(|| (if crate::i18n::is_en() { format!("Missing argument {camel}") } else { format!("缺少参数 {camel}") }))
 }
 
 fn to_val<T: Serialize>(v: T) -> Result<Value, String> {
@@ -423,7 +428,7 @@ fn to_val<T: Serialize>(v: T) -> Result<Value, String> {
 
 async fn dispatch(app: &AppHandle, cmd: &str, args: &Value) -> Result<Value, String> {
     if !whitelist(cmd) {
-        return Err(format!("命令未对手机开放：{cmd}"));
+        return Err((if crate::i18n::is_en() { format!("Command is not available on the phone: {cmd}") } else { format!("命令未对手机开放：{cmd}") }));
     }
     let state = app.state::<Arc<AppState>>();
     match cmd {
@@ -535,7 +540,7 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value) -> Result<Value, Str
             let path = arg_str(args, "path", "path")?;
             to_val(crate::git_files::read_workdir_file(cwd, path)?)
         }
-        _ => Err(format!("未知命令 {cmd}")),
+        _ => Err((if crate::i18n::is_en() { format!("Unknown command {cmd}") } else { format!("未知命令 {cmd}") })),
     }
 }
 
@@ -567,7 +572,7 @@ async fn handle_socket(socket: WebSocket, ctx: WsCtx, token: String, generation:
                         let parsed: Value = match serde_json::from_str(&text) {
                             Ok(v) => v,
                             Err(e) => {
-                                let err = json!({"ok":false,"error":format!("JSON 无效：{e}")});
+                                let err = json!({"ok":false,"error":(if crate::i18n::is_en() { format!("Invalid JSON: {e}") } else { format!("JSON 无效：{e}") })});
                                 if sender.send(Message::text(err.to_string())).await.is_err() { break; }
                                 continue;
                             }
@@ -720,7 +725,7 @@ async fn run_server(app: AppHandle, port: u16, shutdown: oneshot::Receiver<()>) 
     let listener = match TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
-            let _ = app.emit("core-log", format!("手机联动无法绑定 {addr}：{e}"));
+            let _ = app.emit("core-log", (if crate::i18n::is_en() { format!("Phone companion could not bind {addr}: {e}") } else { format!("手机联动无法绑定 {addr}：{e}") }));
             ENABLED.store(false, Ordering::SeqCst);
             BOUND_PORT.store(0, Ordering::SeqCst);
             return;
@@ -808,7 +813,7 @@ pub async fn companion_enable(
         tokio::time::sleep(std::time::Duration::from_millis(25)).await;
     }
     if !ENABLED.load(Ordering::SeqCst) {
-        return Err("无法在本机启动手机联动端口（可能被占用或被防火墙拦截）".into());
+        return Err(crate::i18n::t("无法在本机启动手机联动端口（可能被占用或被防火墙拦截）", "Could not open the phone companion port (it may be in use or blocked by a firewall)"));
     }
     let st = current_status();
     write_store(true, st.port, &st.token)?;
@@ -829,7 +834,7 @@ pub async fn companion_disable() -> Result<CompanionStatus, String> {
 #[tauri::command]
 pub async fn companion_rotate_token(app: AppHandle) -> Result<CompanionStatus, String> {
     if !ENABLED.load(Ordering::SeqCst) {
-        return Err("请先打开手机联动".into());
+        return Err(crate::i18n::t("请先打开手机联动", "Turn on phone companion first"));
     }
     let port = BOUND_PORT.load(Ordering::SeqCst);
     let token = new_token();
@@ -838,7 +843,7 @@ pub async fn companion_rotate_token(app: AppHandle) -> Result<CompanionStatus, S
     }
     AUTH_GENERATION.fetch_add(1, Ordering::SeqCst);
     write_store(true, port, &token)?;
-    let _ = app.emit("core-log", "手机联动令牌已更换，旧连接已撤销".to_string());
+    let _ = app.emit("core-log", crate::i18n::t("手机联动令牌已更换，旧连接已撤销", "Phone companion token rotated. Old connections were closed"));
     Ok(current_status())
 }
 

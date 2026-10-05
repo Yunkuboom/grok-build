@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { t } from '../i18n';
+
 
 interface Props {
   initial: string;
@@ -24,7 +26,7 @@ export default function InlineRename({ initial, busy = false, placeholder, onSub
       defaultValue={initial}
       placeholder={placeholder}
       disabled={busy}
-      aria-label="重命名会话"
+      aria-label={t('重命名会话', 'Rename session')}
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter') onSubmit(e.currentTarget.value.trim());

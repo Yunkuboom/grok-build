@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tauri::AppHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +34,9 @@ pub struct AppConfig {
     pub collapsed_workspaces: Vec<String>,
     #[serde(default)]
     pub sp_enabled: bool,
+    /// "system" | "zh" | "en". Missing values follow the system language.
+    #[serde(default = "default_locale")]
+    pub locale: String,
 }
 
 fn default_theme() -> String {
@@ -43,6 +47,9 @@ fn default_permission_mode() -> String {
 }
 fn default_true() -> bool {
     true
+}
+fn default_locale() -> String {
+    "system".into()
 }
 
 impl Default for AppConfig {
@@ -61,6 +68,7 @@ impl Default for AppConfig {
             hidden_sessions: vec![],
             collapsed_workspaces: vec![],
             sp_enabled: false,
+            locale: default_locale(),
         }
     }
 }
@@ -96,10 +104,16 @@ pub fn write_config(cfg: AppConfig) -> Result<AppConfig, String> {
 
 #[tauri::command]
 pub fn get_app_config() -> Result<AppConfig, String> {
-    read_config()
+    let cfg = read_config()?;
+    crate::i18n::apply_pref(&cfg.locale);
+    Ok(cfg)
 }
 
 #[tauri::command]
-pub fn save_app_config(config: AppConfig) -> Result<AppConfig, String> {
-    write_config(config)
+pub fn save_app_config(app: AppHandle, config: AppConfig) -> Result<AppConfig, String> {
+    crate::i18n::apply_pref(&config.locale);
+    let saved = write_config(config)?;
+    let payload = serde_json::to_value(&saved).unwrap_or(serde_json::Value::Null);
+    crate::companion::emit_event(&app, "app-config", &payload);
+    Ok(saved)
 }

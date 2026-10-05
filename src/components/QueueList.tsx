@@ -1,5 +1,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { CornerUpLeft, GripVertical, Pencil, Trash2 } from '../icons';
+import { t } from '../i18n';
+
 
 export interface QueuedMessage {
   id: string;
@@ -41,7 +43,7 @@ export default function QueueList({ items, onChangeDirection, onEdit, onRemove, 
   if (!items.length) return null;
 
   return (
-    <div className="queue-list" role="list" aria-label="排队消息">
+    <div className="queue-list" role="list" aria-label={t('排队消息', 'Queued messages')}>
       {items.map((item, index) => (
         <div
           key={item.id}
@@ -60,8 +62,8 @@ export default function QueueList({ items, onChangeDirection, onEdit, onRemove, 
             className="queue-handle"
             type="button"
             draggable
-            aria-label={`拖动第 ${index + 1} 条排队消息；可用上下方向键调整顺序`}
-            title="拖拽排序（键盘可用 ↑/↓）"
+            aria-label={t(`拖动第 ${index + 1} 条排队消息；可用上下方向键调整顺序`, `Drag queued message ${index + 1}. Arrow keys also reorder it`)}
+            title={t('拖拽排序（键盘可用 ↑/↓）', 'Drag to reorder (keyboard ↑/↓)')}
             onDragStart={(event) => {
               draggedId.current = item.id;
               setDraggingId(item.id);
@@ -90,8 +92,8 @@ export default function QueueList({ items, onChangeDirection, onEdit, onRemove, 
             <button
               className="queue-action direction"
               type="button"
-              aria-label="改变方向并立即发送"
-              title="改变方向：停止当前生成并立即发送"
+              aria-label={t('改变方向并立即发送', 'Steer and send now')}
+              title={t('改变方向：停止当前生成并立即发送', 'Steer: stop the current turn and send now')}
               onClick={() => onChangeDirection(item.id)}
             >
               <CornerUpLeft size={14} aria-hidden />
@@ -99,8 +101,8 @@ export default function QueueList({ items, onChangeDirection, onEdit, onRemove, 
             <button
               className="queue-action"
               type="button"
-              aria-label="重新编辑排队消息"
-              title="重新编辑"
+              aria-label={t('重新编辑排队消息', 'Edit queued message')}
+              title={t('重新编辑', 'Edit again')}
               onClick={() => onEdit(item.id)}
             >
               <Pencil size={13} aria-hidden />
@@ -108,8 +110,8 @@ export default function QueueList({ items, onChangeDirection, onEdit, onRemove, 
             <button
               className="queue-action danger"
               type="button"
-              aria-label="删除排队消息"
-              title="删除"
+              aria-label={t('删除排队消息', 'Delete queued message')}
+              title={t('删除', 'Delete')}
               onClick={() => onRemove(item.id)}
             >
               <Trash2 size={14} aria-hidden />

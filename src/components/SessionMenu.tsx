@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Trash2,
 } from '../icons';
+import { t } from '../i18n';
 
 interface Props {
   x: number;
@@ -139,22 +140,22 @@ export default function SessionMenu({
       style={{ left: pos.x, top: pos.y }}
       onKeyDown={onMenuKey}
     >
-      {item(<Pencil size={14} />, '重命名', onRename)}
-      {item(<Copy size={14} />, '复制 Session ID', onCopyId)}
-      {item(<ChartColumn size={14} />, '查看用量', onUsage)}
-      {item(<GitFork size={14} />, '分叉会话', onFork)}
-      {item(<Archive size={14} />, '导出 trace', onExportTrace)}
-      {item(<ClipboardCopy size={14} />, '导出会话（Markdown）', onExport)}
-      {item(<RotateCcw size={14} />, '恢复并还原代码快照', onRestoreCode)}
-      {item(pinned ? <PinOff size={14} /> : <Pin size={14} />, pinned ? '取消置顶' : '置顶', onTogglePin)}
+      {item(<Pencil size={14} />, t('重命名', 'Rename'), onRename)}
+      {item(<Copy size={14} />, t('复制 Session ID', 'Copy session ID'), onCopyId)}
+      {item(<ChartColumn size={14} />, t('查看用量', 'View usage'), onUsage)}
+      {item(<GitFork size={14} />, t('分叉会话', 'Fork session'), onFork)}
+      {item(<Archive size={14} />, t('导出 trace', 'Export trace'), onExportTrace)}
+      {item(<ClipboardCopy size={14} />, t('导出会话（Markdown）', 'Export session (Markdown)'), onExport)}
+      {item(<RotateCcw size={14} />, t('恢复并还原代码快照', 'Restore and recover the code snapshot'), onRestoreCode)}
+      {item(pinned ? <PinOff size={14} /> : <Pin size={14} />, pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin'), onTogglePin)}
       {item(
         hidden ? <Eye size={14} /> : <EyeOff size={14} />,
-        hidden ? '取消隐藏' : '隐藏',
+        hidden ? t('取消隐藏', 'Unhide') : t('隐藏', 'Hide'),
         onToggleHidden,
       )}
       <div className="session-menu-sep" />
-      {item(<Trash2 size={14} />, '删除', onDelete, true)}
-      <div className="session-menu-footer">最后更新：{session.updated ?? '未知'}</div>
+      {item(<Trash2 size={14} />, t('删除', 'Delete'), onDelete, true)}
+      <div className="session-menu-footer">{t('最后更新：', 'Last updated: ')}{session.updated ?? t('未知', 'Unknown')}</div>
     </div>
   );
 }

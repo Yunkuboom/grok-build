@@ -2,6 +2,7 @@ mod commands;
 mod companion;
 mod config;
 mod git_files;
+mod i18n;
 mod memory;
 mod pty;
 use commands::AppState;
@@ -14,6 +15,9 @@ pub fn run() {
         .manage(Arc::new(AppState::default()))
         .manage(Arc::new(PtyState::default()))
         .setup(|app| {
+            if let Ok(cfg) = config::read_config() {
+                i18n::apply_pref(&cfg.locale);
+            }
             companion::restore_on_launch(app.handle().clone());
             Ok(())
         })
@@ -100,7 +104,8 @@ pub fn run() {
             memory::append_memory_note,
             memory::open_memory_folder,
             memory::memo_kb_status,
-            memory::memo_kb_search
+            memory::memo_kb_search,
+            i18n::set_ui_language
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Grok Build Desktop")

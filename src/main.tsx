@@ -3,8 +3,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import MobileApp from './mobile/App';
 import { invoke, isCompanion, isTauri } from './bridge';
+import { applyLocalePref } from './i18n';
 import './styles.css';
 import './mobile/mobile.css';
+
+applyLocalePref('system');
 
 if (isTauri()) {
   window.addEventListener('error', (e) => {

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { DiffResult, GitStatusResult, GitStatusEntry, TreeNode } from '../types';
 import { RefreshCw, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   open: boolean;
@@ -12,7 +14,7 @@ interface Props {
 type ViewMode = 'file' | 'diff';
 
 function DiffView({ text }: { text: string }) {
-  if (!text.trim()) return <div className="dock-muted">无变更</div>;
+  if (!text.trim()) return <div className="dock-muted">{t('无变更', 'No changes')}</div>;
   return (
     <pre className="diff-pre">
       {text.split('\n').map((line, i) => {
@@ -184,29 +186,29 @@ export default function FilesDiffPanel({ open, cwd, onClose }: Props) {
   return (
     <aside className="dock-panel files-diff-panel">
       <div className="dock-panel-header">
-        <strong>文件 / Diff</strong>
+        <strong>{t('文件 / Diff', 'Files / diff')}</strong>
         <div className="dock-panel-actions">
           <button
             className="icon-btn tiny soft"
             type="button"
-            title="刷新"
+            title={t('刷新', 'Refresh')}
             onClick={() => void refreshTree()}
           >
             <RefreshCw size={13} />
           </button>
-          <button className="icon-btn tiny" type="button" title="关闭" onClick={onClose}>
+          <button className="icon-btn tiny" type="button" title={t('关闭', 'Close')} onClick={onClose}>
             <X size={14} />
           </button>
         </div>
       </div>
 
       {!cwd ? (
-        <div className="dock-empty">请先选择工作区文件夹</div>
+        <div className="dock-empty">{t('请先选择工作区文件夹', 'Choose a workspace folder first')}</div>
       ) : (
         <div className="files-diff-body">
           {changed.length > 0 && (
             <div className="changed-strip">
-              <div className="dock-section-label">变更</div>
+              <div className="dock-section-label">{t('变更', 'Changes')}</div>
               {changed.slice(0, 40).map((e) => (
                 <button
                   key={e.path}
@@ -226,10 +228,10 @@ export default function FilesDiffPanel({ open, cwd, onClose }: Props) {
 
           <div className="files-diff-split">
             <div className="files-tree">
-              {loading && <div className="dock-muted pad-sm">加载中…</div>}
+              {loading && <div className="dock-muted pad-sm">{t('加载中…', 'Loading…')}</div>}
               {error && <div className="dock-error pad-sm">{error}</div>}
               {!loading && !tree.length && !error && (
-                <div className="dock-muted pad-sm">空目录或无可列文件</div>
+                <div className="dock-muted pad-sm">{t('空目录或无可列文件', 'Empty folder, or nothing to list')}</div>
               )}
               <TreeRows
                 nodes={tree}
@@ -249,8 +251,7 @@ export default function FilesDiffPanel({ open, cwd, onClose }: Props) {
                     className={mode === 'file' ? 'active' : ''}
                     onClick={() => void switchMode('file')}
                   >
-                    文件
-                  </button>
+                    {t('文件', 'File')}</button>
                   <button
                     type="button"
                     className={mode === 'diff' ? 'active' : ''}
@@ -260,12 +261,12 @@ export default function FilesDiffPanel({ open, cwd, onClose }: Props) {
                   </button>
                 </div>
                 <span className="preview-path" title={selected || ''}>
-                  {selected || '未选择'}
+                  {selected || t('未选择', 'Nothing selected')}
                 </span>
               </div>
               <div className="files-preview-body">
-                {!selected && <div className="dock-muted">点击左侧文件查看内容或 Diff</div>}
-                {selected && mode === 'file' && <pre className="file-pre">{content || '（空文件）'}</pre>}
+                {!selected && <div className="dock-muted">{t('点击左侧文件查看内容或 Diff', 'Select a file to view its contents or diff')}</div>}
+                {selected && mode === 'file' && <pre className="file-pre">{content || t('（空文件）', '(empty file)')}</pre>}
                 {selected && mode === 'diff' && (
                   <>
                     {diff?.message && (

@@ -1,6 +1,8 @@
 import type { PermissionRequest } from '../types';
 import { textFrom } from '../types';
 import { Check, Shield, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   permission: PermissionRequest;
@@ -13,7 +15,7 @@ export default function PermissionCard({ permission, onReply }: Props) {
     <div className="permission-card">
       <div className="permission-head">
         <Shield size={16} />
-        <strong>Grok 请求执行工具</strong>
+        <strong>{t('Grok 请求执行工具', 'Grok wants to run a tool')}</strong>
       </div>
       {detail && <p className="permission-detail">{detail}</p>}
       <div className="permission-actions">
@@ -25,8 +27,7 @@ export default function PermissionCard({ permission, onReply }: Props) {
         ))}
         <button type="button" className="secondary" onClick={() => onReply(null)}>
           <X size={14} />
-          拒绝
-        </button>
+          {t('拒绝', 'Deny')}</button>
       </div>
     </div>
   );

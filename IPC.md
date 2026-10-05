@@ -323,9 +323,13 @@ type AppConfig = {
   hiddenSessions: string[]; // 默认 []；前端隐藏的会话 id（仅过滤展示，不删 CLI 会话）
   collapsedWorkspaces: string[]; // 默认 []；侧栏折叠的工作区路径
   spEnabled: boolean;       // 默认 false；spawn agent 时按 session 加载 superpowers 插件（--plugin-dir）
+  locale: string;           // 默认 "system"；"system" | "zh" | "en"
 };
 ```
-读取不存在的配置返回默认值（不落盘）；保存为整体覆盖写。旧 config.json 缺这三个字段时自动用默认值。
+读取不存在的配置返回默认值（不落盘）；保存为整体覆盖写。旧 config.json 缺字段时用默认值。`locale` 缺省为 `"system"`。
+
+### `set_ui_language(lang: "system" | "zh" | "en") -> void`
+只改当前进程里后端提示的语言，不写盘。桌面保存配置时会把同一个 `locale` 交给它。`"system"` 读 macOS `AppleLanguages`，读不到再看 `LC_ALL` / `LC_MESSAGES` / `LANG`，都不是中文则用英文。手机端不调用这条命令。
 
 **start_session 的 spawn 注入**（由 config 驱动，三个字段任一变化都会触发 agent 重启）：
 - `--rules <composed>`（全局 flag，位于 `agent` 子命令之前）：按序拼接——a) 用户身份规则（`~/.grok-builder/identity-rules.md` 存在且非空才注入，仓库不附带个人规则）；b) ADHD 块（`adhdAlwaysOn`，依次读 `~/.openclaude-desktop/skills/i-have-adhd/SKILL.md` → `~/.agents/skills/i-have-adhd/SKILL.md` → 内嵌兜底）；c) Memo 冷库规则块（`memoKbEnabled`）。块间两个换行。缺省时 a) 整段省略。
@@ -377,6 +381,9 @@ type MemoStatus = { available: boolean; detail: string };
 { kind: "prompt_error", error: string }
 ```
 
+### `app-config`
+`save_app_config` 成功后双播整份 `AppConfig`。手机用它同步 `locale`：显式 `zh` / `en` 两边一致；`system` 时手机按自己的系统语言显示，电脑后端仍按 Mac 语言。
+
 ### `companion-state`
 手机联动快照，桌面 Tauri 事件与 WebSocket 双播：
 ```ts
@@ -404,7 +411,7 @@ type CompanionStatus = {
 
 WebSocket：`ws://<host>:<port>/ws?t=<token>`。请求 `{id, cmd, args}`，应答 `{id, ok, result}` 或 `{id, ok:false, error}`。事件 `{event, payload}`。
 
-白名单 command：`core_status` `get_app_config` `list_sessions` `search_sessions` `start_session` `send_prompt` `cancel_session` `permission_reply` `ask_reply` `exit_plan_reply` `set_session_option` `set_session_mode` `rename_session` `delete_session` `fork_session` `session_usage` `workspace_usage` `export_session` `list_workdir_tree` `read_workdir_file`。其它命令 403。禁止 PTY / git 写 / 登录退出 / 更新 / MCP / 插件。
+白名单 command：`core_status` `get_app_config` `list_sessions` `search_sessions` `start_session` `send_prompt` `cancel_session` `permission_reply` `ask_reply` `exit_plan_reply` `set_session_option` `set_session_mode` `rename_session` `delete_session` `fork_session` `session_usage` `workspace_usage` `export_session` `list_workdir_tree` `read_workdir_file`。其它命令 403。禁止 PTY / git 写 / 登录退出 / 更新 / MCP / 插件 / `set_ui_language` / `save_app_config`。语言由桌面设置，经 `app-config` 推到手机。
 
 ### `core-log` — `string`
 agent stderr 行（已去 ANSI、过滤 auth.json/token）。

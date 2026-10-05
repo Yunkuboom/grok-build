@@ -20,9 +20,14 @@
 - **xterm PTY 终端**：底部可收起的真终端（登录 shell，xterm.js + portable-pty）。
 - **右侧三 dock**：文件树/预览/diff、Git 面板（status/stage/commit/分支切换）、产出物。
 - **用量弹窗**：单会话与工作区聚合用量，cost 换算自 `costUsdTicks`（1e10 ticks = 1 USD）。
-- **8 分区设置**：CLI 状态与登录（OAuth/设备码，经 Terminal.app）、更新检查与渠道切换、MCP 服务器管理、插件、memory、worktree、外观主题等。
+- **8 分区设置**：CLI 状态与登录（OAuth/设备码，经 Terminal.app）、更新检查与渠道切换、MCP 服务器管理、插件、memory、worktree、外观主题与语言等。
 - 深浅色 + 跟随系统主题；配置存于 `~/.grok-builder/config.json`。
+- **中文 / English**：设置 → 主题与语言。默认跟随系统语言。选中文或 English 后，桌面、后端提示和手机联动使用同一种语言。选「跟随系统」时，电脑按 macOS 语言，手机按手机自己的系统语言。
 - **手机联动**：设置 → 手机联动，打开后扫码。手机 PWA 与桌面共用同一个 agent、同一批 `~/.grok` 会话和项目文件夹。电脑端需保持运行。
+
+## Language
+
+Settings → Theme and language. The default follows the system language. Chinese or English applies to the desktop, backend messages, and the phone companion. “System” lets the Mac follow macOS and the phone follow its own language.
 
 ## 构建与运行
 

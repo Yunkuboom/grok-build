@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { AcpEvent, SessionUsage, UsageStats, WorkspaceUsage } from '../types';
 import { Loader2, RefreshCw, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   open: boolean;
@@ -26,16 +28,16 @@ function fmtTokens(n: number): string {
 }
 
 const SEGMENTS = [
-  { key: 'inputTokens', label: '输入', color: '#3A83F7' },
-  { key: 'cachedReadTokens', label: '缓存读取', color: '#8B5CF6' },
-  { key: 'outputTokens', label: '输出', color: '#22C55E' },
-  { key: 'reasoningTokens', label: '推理', color: '#F59E0B' },
+  { key: 'inputTokens', label: t('输入', 'Input'), color: '#3A83F7' },
+  { key: 'cachedReadTokens', label: t('缓存读取', 'Cache read'), color: '#8B5CF6' },
+  { key: 'outputTokens', label: t('输出', 'Output'), color: '#22C55E' },
+  { key: 'reasoningTokens', label: t('推理', 'Reasoning'), color: '#F59E0B' },
 ] as const;
 
 function StackedBar({ stats }: { stats: UsageStats }) {
   const parts = SEGMENTS.map((s) => ({ ...s, value: stats[s.key] || 0 }));
   const sum = parts.reduce((acc, p) => acc + p.value, 0);
-  if (!sum) return <div className="usage-empty">暂无 token 数据</div>;
+  if (!sum) return <div className="usage-empty">{t('暂无 token 数据', 'No token data yet')}</div>;
   return (
     <div className="usage-bar-block">
       <div className="usage-bar">
@@ -173,14 +175,14 @@ export default function UsageModal({ open, cwd, sessionId, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section className="modal usage-stats-modal" role="dialog" aria-modal="true" aria-label="Grok 用量">
+      <section className="modal usage-stats-modal" role="dialog" aria-modal="true" aria-label={t('Grok 用量', 'Grok usage')}>
         <div className="modal-header">
-          <strong>Grok 用量</strong>
+          <strong>{t('Grok 用量', 'Grok usage')}</strong>
           <div className="usage-header-actions">
             <button
               className="icon-btn"
               type="button"
-              title="刷新"
+              title={t('刷新', 'Refresh')}
               disabled={loadingSession || loadingWorkspace}
               onClick={loadAll}
             >
@@ -190,7 +192,7 @@ export default function UsageModal({ open, cwd, sessionId, onClose }: Props) {
                 <RefreshCw size={15} />
               )}
             </button>
-            <button className="icon-btn" type="button" title="关闭 (Esc)" onClick={onClose}>
+            <button className="icon-btn" type="button" title={t('关闭 (Esc)', 'Close (Esc)')} onClick={onClose}>
               <X size={16} />
             </button>
           </div>
@@ -200,51 +202,51 @@ export default function UsageModal({ open, cwd, sessionId, onClose }: Props) {
           {error && (
             <div className="error-banner usage-error">
               <span>{error}</span>
-              <button type="button" aria-label="关闭错误" onClick={() => setError('')}>
+              <button type="button" aria-label={t('关闭错误', 'Dismiss error')} onClick={() => setError('')}>
                 <X size={14} />
               </button>
             </div>
           )}
 
           <section className="usage-section">
-            <div className="usage-section-title">当前会话</div>
-            {!sessionId && <div className="usage-empty">开始会话后可查看本次用量</div>}
+            <div className="usage-section-title">{t('当前会话', 'This session')}</div>
+            {!sessionId && <div className="usage-empty">{t('开始会话后可查看本次用量', 'Usage appears after a session starts')}</div>}
             {sessionId && loadingSession && !sessionUsage && <Skeleton />}
             {sessionId && sessionUsage && sessionStats && (
               <>
                 <StackedBar stats={sessionStats} />
                 <StatRow
                   items={[
-                    { label: '模型调用', value: String(sessionStats.modelCalls || 0) },
-                    { label: '轮数', value: String(sessionTurns) },
-                    { label: '成本', value: fmtCost(sessionStats.costUsdTicks) },
+                    { label: t('模型调用', 'Model calls'), value: String(sessionStats.modelCalls || 0) },
+                    { label: t('轮数', 'Turns'), value: String(sessionTurns) },
+                    { label: t('成本', 'Cost'), value: fmtCost(sessionStats.costUsdTicks) },
                   ]}
                 />
               </>
             )}
             {sessionId && !loadingSession && !sessionUsage && !error && (
-              <div className="usage-empty">未取到会话用量</div>
+              <div className="usage-empty">{t('未取到会话用量', 'Session usage is unavailable')}</div>
             )}
           </section>
 
           <section className="usage-section">
-            <div className="usage-section-title">本工作区累计</div>
-            {!cwd && <div className="usage-empty">选择工作区后可查看累计用量</div>}
+            <div className="usage-section-title">{t('本工作区累计', 'Workspace total')}</div>
+            {!cwd && <div className="usage-empty">{t('选择工作区后可查看累计用量', 'Choose a workspace to see total usage')}</div>}
             {cwd && loadingWorkspace && !workspace && <Skeleton />}
             {cwd && workspace && (
               <>
                 <StackedBar stats={workspace.totals} />
                 <StatRow
                   items={[
-                    { label: '会话数', value: String(workspace.sessionCount || 0) },
-                    { label: '总轮数', value: String(workspace.totals.turnCount || 0) },
-                    { label: '总成本', value: fmtCost(workspace.totals.costUsdTicks) },
+                    { label: t('会话数', 'Sessions'), value: String(workspace.sessionCount || 0) },
+                    { label: t('总轮数', 'Total turns'), value: String(workspace.totals.turnCount || 0) },
+                    { label: t('总成本', 'Total cost'), value: fmtCost(workspace.totals.costUsdTicks) },
                   ]}
                 />
 
                 {modelEntries.length > 0 && (
                   <div className="usage-models">
-                    <div className="usage-sub-title">按模型</div>
+                    <div className="usage-sub-title">{t('按模型', 'By model')}</div>
                     {modelEntries.map(([id, st]) => (
                       <div key={id} className="usage-model-row">
                         <div className="usage-model-meta">
@@ -269,7 +271,7 @@ export default function UsageModal({ open, cwd, sessionId, onClose }: Props) {
 
                 {workspace.topSessions?.length > 0 && (
                   <div className="usage-top">
-                    <div className="usage-sub-title">用量最高的会话</div>
+                    <div className="usage-sub-title">{t('用量最高的会话', 'Sessions by usage')}</div>
                     {workspace.topSessions.slice(0, 5).map((s) => (
                       <div key={s.sessionId} className="usage-top-row">
                         <span className="usage-top-title" title={s.sessionId}>
@@ -285,7 +287,7 @@ export default function UsageModal({ open, cwd, sessionId, onClose }: Props) {
               </>
             )}
             {cwd && !loadingWorkspace && !workspace && !error && (
-              <div className="usage-empty">未取到工作区用量</div>
+              <div className="usage-empty">{t('未取到工作区用量', 'Workspace usage is unavailable')}</div>
             )}
           </section>
         </div>

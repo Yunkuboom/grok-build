@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { AppConfig, CmdResult, CompanionStatus, CoreStatus, MemoryFile, MemoStatus } from '../types';
-import { EFFORT_FALLBACK, PERMISSION_MODES } from '../types';
+import { EFFORT_FALLBACK, permissionModes } from '../types';
 import {
   Brain,
   Cpu,
@@ -29,19 +29,22 @@ import {
   Wrench,
   X,
 } from '../icons';
+import { t } from '../i18n';
 
 type Section = 'accountModel' | 'cli' | 'companion' | 'mcp' | 'plugin' | 'memory' | 'theme' | 'diagnostics';
 
-const SECTIONS: Array<{ id: Section; label: string }> = [
-  { id: 'accountModel', label: '账号与模型' },
-  { id: 'cli', label: 'CLI 内核' },
-  { id: 'companion', label: '手机联动' },
-  { id: 'mcp', label: 'MCP 服务器' },
-  { id: 'plugin', label: '插件' },
-  { id: 'memory', label: '记忆与 Worktree' },
-  { id: 'theme', label: '主题' },
-  { id: 'diagnostics', label: '诊断' },
-];
+function sectionList(): Array<{ id: Section; label: string }> {
+  return [
+  { id: 'accountModel', label: t('账号与模型', 'Account and model') },
+  { id: 'cli', label: t('CLI 内核', 'CLI core') },
+  { id: 'companion', label: t('手机联动', 'Phone companion') },
+  { id: 'mcp', label: t('MCP 服务器', 'MCP servers') },
+  { id: 'plugin', label: t('插件', 'Plugins') },
+  { id: 'memory', label: t('记忆与 Worktree', 'Memory and worktrees') },
+  { id: 'theme', label: t('主题与语言', 'Theme and language') },
+  { id: 'diagnostics', label: t('诊断', 'Diagnostics') },
+  ];
+}
 
 interface Props {
   open: boolean;
@@ -73,7 +76,7 @@ function normalizeList(raw: unknown): Array<Record<string, unknown>> {
 
 function normalizeMcp(raw: unknown): McpItem[] {
   return normalizeList(raw).map((it) => {
-    const name = String(it.name ?? it.id ?? '未命名');
+    const name = String(it.name ?? it.id ?? t('未命名', 'Untitled'));
     const command = it.command ?? it.url ?? it.commandOrUrl ?? '';
     const transport = it.transport ?? it.type ?? '';
     const statusRaw = String(it.status ?? '').toLowerCase();
@@ -95,7 +98,7 @@ function normalizeMcp(raw: unknown): McpItem[] {
 
 function normalizePlugins(raw: unknown): PluginItem[] {
   return normalizeList(raw).map((it) => {
-    const name = String(it.name ?? it.id ?? '未命名');
+    const name = String(it.name ?? it.id ?? t('未命名', 'Untitled'));
     // 后端实测可靠返回 enabled（~/.grok/config.toml [plugins].disabled），直接用，不从 status 推断
     const enabled = typeof it.enabled === 'boolean' ? it.enabled : true;
     const detail = String(it.source ?? it.url ?? it.path ?? it.version ?? '');
@@ -253,7 +256,7 @@ export default function SettingsModal({
         const raw = await invoke<unknown>('marketplace_list');
         setMarkets(
           normalizeList(raw).map((it) => ({
-            name: String(it.name ?? it.source ?? it.url ?? it.id ?? '未命名源'),
+            name: String(it.name ?? it.source ?? it.url ?? it.id ?? t('未命名源', 'Unnamed source')),
             detail: String(it.url ?? it.address ?? it.source ?? ''),
           })),
         );
@@ -303,7 +306,7 @@ export default function SettingsModal({
 
   if (!open) return null;
 
-  const cmdNote = (res: CmdResult, okText: string) => (res.ok ? okText : res.output || '命令失败');
+  const cmdNote = (res: CmdResult, okText: string) => (res.ok ? okText : res.output || t('命令失败', 'Command failed'));
 
   return (
     <div
@@ -313,17 +316,17 @@ export default function SettingsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section className="modal settings-modal" role="dialog" aria-modal="true" aria-label="设置">
+      <section className="modal settings-modal" role="dialog" aria-modal="true" aria-label={t('设置', 'Settings')}>
         <div className="modal-header">
-          <strong>设置</strong>
-          <button className="icon-btn" type="button" title="关闭 (Esc)" onClick={onClose}>
+          <strong>{t('设置', 'Settings')}</strong>
+          <button className="icon-btn" type="button" title={t('关闭 (Esc)', 'Close (Esc)')} onClick={onClose}>
             <X size={16} />
           </button>
         </div>
 
         <div className="settings-layout">
           <nav className="settings-nav">
-            {SECTIONS.map((s) => (
+            {sectionList().map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -344,9 +347,9 @@ export default function SettingsModal({
                   <div className="setting-title">
                     <span>
                       <i className={`status-dot ${status?.authenticated ? 'online' : ''}`} />
-                      <strong>Grok 官方账户</strong>
+                      <strong>{t('Grok 官方账户', 'Grok account')}</strong>
                     </span>
-                    <small>{status?.authMessage || (status ? '' : '检测中…')}</small>
+                    <small>{status?.authMessage || (status ? '' : t('检测中…', 'Checking…'))}</small>
                   </div>
                   <div className="field-btn-row">
                     <button
@@ -356,13 +359,12 @@ export default function SettingsModal({
                       onClick={() =>
                         void run(async () => {
                           await invoke('launch_login');
-                          return '已在终端打开 grok login --oauth';
+                          return t('已在终端打开 grok login --oauth', 'Opened grok login --oauth in Terminal');
                         })
                       }
                     >
                       <LogIn size={14} />
-                      在终端登录
-                    </button>
+                      {t('在终端登录', 'Log in via Terminal')}</button>
                     <button
                       className="btn"
                       type="button"
@@ -370,30 +372,28 @@ export default function SettingsModal({
                       onClick={() =>
                         void run(async () => {
                           await invoke('launch_device_login');
-                          return '已在终端打开设备码登录';
+                          return t('已在终端打开设备码登录', 'Opened device-code login in Terminal');
                         })
                       }
                     >
                       <LogIn size={14} />
-                      设备码登录
-                    </button>
+                      {t('设备码登录', 'Device-code login')}</button>
                     <button
                       className="btn danger"
                       type="button"
                       disabled={busy || !status?.authenticated}
                       onClick={() => {
-                        if (!window.confirm('退出登录将结束活动会话，并影响终端共用的 grok。继续？')) return;
+                        if (!window.confirm(t('退出登录将结束活动会话，并影响终端共用的 grok。继续？', 'Logging out ends the active session and affects the grok CLI shared with Terminal. Continue?'))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('logout');
                           onSessionEnded();
                           await onRefreshCore();
-                          return cmdNote(res, '已退出登录');
+                          return cmdNote(res, t('已退出登录', 'Logged out'));
                         });
                       }}
                     >
                       <LogOut size={14} />
-                      退出登录
-                    </button>
+                      {t('退出登录', 'Log out')}</button>
                     <button
                       className="btn"
                       type="button"
@@ -401,25 +401,24 @@ export default function SettingsModal({
                       onClick={() =>
                         void run(async () => {
                           await onRefreshCore();
-                          return '状态已刷新';
+                          return t('状态已刷新', 'Status refreshed');
                         })
                       }
                     >
                       <RefreshCw size={14} />
-                      刷新状态
-                    </button>
+                      {t('刷新状态', 'Refresh status')}</button>
                   </div>
                 </div>
                 <label className="field">
                   <span>
-                    <Cpu size={13} /> 默认模型（新会话生效）
+                    <Cpu size={13} /> {t('默认模型（新会话生效）', 'Default model (applies to new sessions)')}
                   </span>
                   <select value={config.model} onChange={(e) => onSaveConfig({ model: e.target.value })}>
-                    <option value="">跟随 CLI 默认</option>
+                    <option value="">{t('跟随 CLI 默认', 'Follow the CLI default')}</option>
                     {status?.models.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
-                        {m.isDefault ? '（默认）' : ''}
+                        {m.isDefault ? t('（默认）', '(default)') : ''}
                       </option>
                     ))}
                     {config.model && !status?.models.some((m) => m.id === config.model) && (
@@ -429,10 +428,10 @@ export default function SettingsModal({
                 </label>
                 <label className="field">
                   <span>
-                    <Brain size={13} /> 推理强度（新会话生效）
+                    <Brain size={13} /> {t('推理强度（新会话生效）', 'Reasoning effort (applies to new sessions)')}
                   </span>
                   <select value={config.effort} onChange={(e) => onSaveConfig({ effort: e.target.value })}>
-                    <option value="">跟随 CLI 默认</option>
+                    <option value="">{t('跟随 CLI 默认', 'Follow the CLI default')}</option>
                     {EFFORT_FALLBACK.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -442,38 +441,38 @@ export default function SettingsModal({
                 </label>
                 <label className="field">
                   <span>
-                    <Shield size={13} /> 默认权限模式（新会话生效）
+                    <Shield size={13} /> {t('默认权限模式（新会话生效）', 'Default permission mode (applies to new sessions)')}
                   </span>
                   <select
                     value={config.permissionMode}
                     onChange={(e) => onSaveConfig({ permissionMode: e.target.value })}
                   >
-                    {PERMISSION_MODES.map((m) => (
+                    {permissionModes().map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.label}
                       </option>
                     ))}
                   </select>
                 </label>
-                <p className="field-hint">会话进行中可在输入框工具栏临时切换模型、强度与权限模式。</p>
+                <p className="field-hint">{t('会话进行中可在输入框工具栏临时切换模型、强度与权限模式。', 'While a session is running, switch model, effort, and permission mode from the composer toolbar.')}</p>
               </>
             )}
 
             {section === 'cli' && (
               <>
                 <div className="field">
-                  <span>CLI 路径</span>
-                  <code className="static-code">{status?.cliPath || '检测中…'}</code>
-                  <small>与终端共用 ~/.grok 登录、会话及配置。</small>
+                  <span>{t('CLI 路径', 'CLI path')}</span>
+                  <code className="static-code">{status?.cliPath || t('检测中…', 'Checking…')}</code>
+                  <small>{t('与终端共用 ~/.grok 登录、会话及配置。', 'Shares the ~/.grok login, sessions, and config with the terminal.')}</small>
                 </div>
                 <div className="field">
-                  <span>当前版本</span>
-                  <code className="static-code">{status?.version || '检测中…'}</code>
+                  <span>{t('当前版本', 'Current version')}</span>
+                  <code className="static-code">{status?.version || t('检测中…', 'Checking…')}</code>
                 </div>
                 <div className="setting-card">
                   <div>
-                    <strong>更新内核</strong>
-                    <small>更新会影响终端共用的 grok，并结束本应用中的活动会话。</small>
+                    <strong>{t('更新内核', 'Update CLI')}</strong>
+                    <small>{t('更新会影响终端共用的 grok，并结束本应用中的活动会话。', 'Updates the grok CLI shared with Terminal and ends the active session in this app.')}</small>
                   </div>
                   <div className="field-btn-row">
                     <button
@@ -491,19 +490,19 @@ export default function SettingsModal({
                             raw.latest ?? raw.latestVersion ?? raw.latest_version ?? raw.version ?? '',
                           );
                           const text = available
-                            ? `可更新：${current || '当前版'} → ${latest || '最新版'}`
-                            : `已是最新版${current ? `（${current}）` : ''}`;
+                            ? t(`可更新：${current || '当前版'} → ${latest || t('最新版', 'Latest')}`, `Update available: ${current || 'current'} → ${latest || 'latest'}`)
+                            : t(`已是最新版${current ? `（${current}）` : ''}`, `Already up to date${current ? ` (${current})` : ''}`);
                           setUpdateInfo({ text, raw: JSON.stringify(raw, null, 2) });
                           return text;
                         })
                       }
                     >
                       <RefreshCw size={14} />
-                      检查更新
+                      {t('检查更新', 'Check for updates')}
                     </button>
                     <input
                       className="inline-input"
-                      placeholder="版本号（留空为最新）"
+                      placeholder={t('版本号（留空为最新）', 'Version (empty means latest)')}
                       value={updateVersion}
                       onChange={(e) => setUpdateVersion(e.target.value)}
                     />
@@ -512,23 +511,23 @@ export default function SettingsModal({
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        if (!window.confirm('安装更新会结束活动会话并更新终端共用的 grok。继续？')) return;
+                        if (!window.confirm(t('安装更新会结束活动会话并更新终端共用的 grok。继续？', 'Installing an update ends the active session and updates the grok CLI shared with Terminal. Continue?'))) return;
                         void run(async () => {
                           const msg = await invoke<string>('install_update', {
                             version: updateVersion.trim() || null,
                           });
                           onSessionEnded();
                           await onRefreshCore();
-                          return msg || '更新完成';
+                          return msg || t('更新完成', 'Update finished');
                         });
                       }}
                     >
                       {busy ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
-                      安装{updateVersion.trim() ? '指定版本' : '最新版'}
+                      {updateVersion.trim() ? t('安装指定版本', 'Install specific version') : t('安装最新版', 'Install latest')}
                     </button>
                   </div>
                   <div className="field-btn-row">
-                    <span className="field-hint">更新渠道：</span>
+                    <span className="field-hint">{t('更新渠道：', 'Update channel:')}</span>
                     {(['stable', 'alpha'] as const).map((ch) => (
                       <button
                         key={ch}
@@ -536,16 +535,16 @@ export default function SettingsModal({
                         type="button"
                         disabled={busy}
                         onClick={() => {
-                          if (!window.confirm(`切换到 ${ch} 渠道会结束活动会话并更新 grok。继续？`)) return;
+                          if (!window.confirm(t(`切换到 ${ch} 渠道会结束活动会话并更新 grok。继续？`, `Switching to the ${ch} channel ends the active session and updates grok. Continue?`))) return;
                           void run(async () => {
                             const msg = await invoke<string>('switch_update_channel', { channel: ch });
                             onSessionEnded();
                             await onRefreshCore();
-                            return msg || `已切换到 ${ch}`;
+                            return msg || t(`已切换到 ${ch}`, `Switched to ${ch}`);
                           });
                         }}
                       >
-                        {ch === 'stable' ? '稳定版 stable' : '尝鲜版 alpha'}
+                        {ch === 'stable' ? t('稳定版 stable', 'Stable channel') : t('尝鲜版 alpha', 'Alpha channel')}
                       </button>
                     ))}
                   </div>
@@ -553,7 +552,7 @@ export default function SettingsModal({
                     <div className="update-info">
                       <span className="update-info-line">{updateInfo.text}</span>
                       <details className="update-info-detail">
-                        <summary>详情</summary>
+                        <summary>{t('详情', 'Details')}</summary>
                         <pre className="settings-output">{updateInfo.raw}</pre>
                       </details>
                     </div>
@@ -566,13 +565,11 @@ export default function SettingsModal({
               <>
                 <div className="setting-title-row">
                   <strong>
-                    <Server size={14} /> MCP 服务器
-                  </strong>
+                    <Server size={14} /> {t('MCP 服务器', 'MCP servers')}</strong>
                   <div className="field-btn-row">
                     <button className="btn" type="button" disabled={busy} onClick={() => void loadMcp()}>
                       <RefreshCw size={13} />
-                      刷新
-                    </button>
+                      {t('刷新', 'Refresh')}</button>
                     <button
                       className="btn"
                       type="button"
@@ -580,8 +577,8 @@ export default function SettingsModal({
                       onClick={() =>
                         void run(async () => {
                           const res = await invoke<CmdResult>('mcp_doctor');
-                          sectionOutput('mcp', res.output || (res.ok ? 'doctor 通过' : 'doctor 失败'));
-                          return res.ok ? 'mcp doctor 完成' : 'mcp doctor 报告了问题';
+                          sectionOutput('mcp', res.output || (res.ok ? t('doctor 通过', 'doctor passed') : t('doctor 失败', 'doctor failed')));
+                          return res.ok ? t('mcp doctor 完成', 'mcp doctor finished') : t('mcp doctor 报告了问题', 'mcp doctor reported problems');
                         })
                       }
                     >
@@ -590,8 +587,8 @@ export default function SettingsModal({
                     </button>
                   </div>
                 </div>
-                {mcpItems === null && <p className="muted">加载中…</p>}
-                {mcpItems && !mcpItems.length && <p className="muted">没有已配置的 MCP 服务器。</p>}
+                {mcpItems === null && <p className="muted">{t('加载中…', 'Loading…')}</p>}
+                {mcpItems && !mcpItems.length && <p className="muted">{t('没有已配置的 MCP 服务器。', 'No MCP servers configured.')}</p>}
                 {mcpItems?.map((it) => (
                   <div key={it.name} className="list-row">
                     <div className="list-row-meta">
@@ -599,7 +596,7 @@ export default function SettingsModal({
                       {it.detail && <small>{it.detail}</small>}
                     </div>
                     <span className={`status-dot-label ${it.enabled ? 'online' : ''}`}>
-                      {it.enabled ? '已启用' : '已禁用'}
+                      {it.enabled ? t('已启用', 'Enabled') : t('已禁用', 'Disabled')}
                     </span>
                     <button
                       className="btn"
@@ -611,22 +608,22 @@ export default function SettingsModal({
                             name: it.name,
                           });
                           await loadMcp();
-                          return cmdNote(res, it.enabled ? '已禁用' : '已启用');
+                          return cmdNote(res, it.enabled ? t('已禁用', 'Disabled') : t('已启用', 'Enabled'));
                         })
                       }
                     >
-                      {it.enabled ? '禁用' : '启用'}
+                      {it.enabled ? t('禁用', 'Disable') : t('启用', 'Enable')}
                     </button>
                     <button
                       className="btn danger"
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        if (!window.confirm(`移除 MCP 服务器「${it.name}」？`)) return;
+                        if (!window.confirm(t(`移除 MCP 服务器「${it.name}」？`, `Remove MCP server “${it.name}”?`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('mcp_remove', { name: it.name });
                           await loadMcp();
-                          return cmdNote(res, '已移除');
+                          return cmdNote(res, t('已移除', 'Removed'));
                         });
                       }}
                     >
@@ -635,19 +632,19 @@ export default function SettingsModal({
                   </div>
                 ))}
                 <div className="add-form">
-                  <strong>添加服务器</strong>
+                  <strong>{t('添加服务器', 'Add server')}</strong>
                   <input
-                    placeholder="名称"
+                    placeholder={t('名称', 'Name')}
                     value={mcpName}
                     onChange={(e) => setMcpName(e.target.value)}
                   />
                   <input
-                    placeholder="命令或 URL（如 npx 或 http://…）"
+                    placeholder={t('命令或 URL（如 npx 或 http://…）', 'Command or URL (for example npx or http://…)')}
                     value={mcpTarget}
                     onChange={(e) => setMcpTarget(e.target.value)}
                   />
                   <input
-                    placeholder="参数（空格分隔，可留空）"
+                    placeholder={t('参数（空格分隔，可留空）', 'Arguments (space-separated, optional)')}
                     value={mcpArgs}
                     onChange={(e) => setMcpArgs(e.target.value)}
                   />
@@ -666,16 +663,16 @@ export default function SettingsModal({
                           env: null,
                           headers: null,
                         });
-                        if (!res.ok) throw new Error(res.output || '添加失败');
+                        if (!res.ok) throw new Error(res.output || t('添加失败', 'Could not add'));
                         setMcpName('');
                         setMcpTarget('');
                         setMcpArgs('');
                         await loadMcp();
-                        return '已添加';
+                        return t('已添加', 'Added');
                       })
                     }
                   >
-                    添加
+                    {t('添加', 'Add')}
                   </button>
                 </div>
               </>
@@ -685,15 +682,13 @@ export default function SettingsModal({
               <>
                 <div className="setting-title-row">
                   <strong>
-                    <Puzzle size={14} /> 插件
-                  </strong>
+                    <Puzzle size={14} /> {t('插件', 'Plugins')}</strong>
                   <button className="btn" type="button" disabled={busy} onClick={() => void loadPlugins()}>
                     <RefreshCw size={13} />
-                    刷新
-                  </button>
+                    {t('刷新', 'Refresh')}</button>
                 </div>
-                {plugins === null && <p className="muted">加载中…</p>}
-                {plugins && !plugins.length && <p className="muted">没有已安装的插件。</p>}
+                {plugins === null && <p className="muted">{t('加载中…', 'Loading…')}</p>}
+                {plugins && !plugins.length && <p className="muted">{t('没有已安装的插件。', 'No plugins installed.')}</p>}
                 {plugins?.map((p) => (
                   <div key={p.name} className="list-row">
                     <div className="list-row-meta">
@@ -701,12 +696,12 @@ export default function SettingsModal({
                       {p.detail && <small>{p.detail}</small>}
                       {p.name.toLowerCase().includes('superpowers') && (
                         <small className="sp-hint">
-                          全局启用会影响所有会话；推荐用顶栏 SP 开关按会话开启
+                          {t('全局启用会影响所有会话；推荐用顶栏 SP 开关按会话开启', 'Turning this on globally affects every session. Prefer the SP switch in the top bar for one session.')}
                         </small>
                       )}
                     </div>
                     <span className={`status-dot-label ${p.enabled ? 'online' : ''}`}>
-                      {p.enabled ? '已启用' : '已禁用'}
+                      {p.enabled ? t('已启用', 'Enabled') : t('已禁用', 'Disabled')}
                     </span>
                     <button
                       className="btn"
@@ -718,22 +713,22 @@ export default function SettingsModal({
                             name: p.name,
                           });
                           await loadPlugins();
-                          return cmdNote(res, p.enabled ? '已禁用' : '已启用');
+                          return cmdNote(res, p.enabled ? t('已禁用', 'Disabled') : t('已启用', 'Enabled'));
                         })
                       }
                     >
-                      {p.enabled ? '禁用' : '启用'}
+                      {p.enabled ? t('禁用', 'Disable') : t('启用', 'Enable')}
                     </button>
                     <button
                       className="btn danger"
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        if (!window.confirm(`卸载插件「${p.name}」？`)) return;
+                        if (!window.confirm(t(`卸载插件「${p.name}」？`, `Uninstall plugin “${p.name}”?`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('plugin_uninstall', { name: p.name });
                           await loadPlugins();
-                          return cmdNote(res, '已卸载');
+                          return cmdNote(res, t('已卸载', 'Uninstalled'));
                         });
                       }}
                     >
@@ -742,9 +737,9 @@ export default function SettingsModal({
                   </div>
                 ))}
                 <div className="add-form">
-                  <strong>安装插件</strong>
+                  <strong>{t('安装插件', 'Install plugin')}</strong>
                   <input
-                    placeholder="git URL 或本地路径"
+                    placeholder={t('git URL 或本地路径', 'Git URL or local path')}
                     value={pluginSource}
                     onChange={(e) => setPluginSource(e.target.value)}
                   />
@@ -755,26 +750,24 @@ export default function SettingsModal({
                     onClick={() =>
                       void run(async () => {
                         const res = await invoke<CmdResult>('plugin_install', { source: pluginSource.trim() });
-                        if (!res.ok) throw new Error(res.output || '安装失败');
+                        if (!res.ok) throw new Error(res.output || t('安装失败', 'Install failed'));
                         setPluginSource('');
                         await loadPlugins();
-                        return '已安装';
+                        return t('已安装', 'Installed');
                       })
                     }
                   >
-                    安装
+                    {t('安装', 'Install')}
                   </button>
                 </div>
 
                 <div className="setting-title-row">
                   <strong>
-                    <Store size={14} /> 市场源
-                  </strong>
+                    <Store size={14} /> {t('市场源', 'Marketplaces')}</strong>
                   <div className="field-btn-row">
                     <button className="btn" type="button" disabled={busy} onClick={() => void loadMarkets()}>
                       <RefreshCw size={13} />
-                      刷新
-                    </button>
+                      {t('刷新', 'Refresh')}</button>
                     <button
                       className="btn"
                       type="button"
@@ -784,16 +777,16 @@ export default function SettingsModal({
                           const res = await invoke<CmdResult>('marketplace_update');
                           await loadMarkets();
                           await loadPlugins();
-                          return cmdNote(res, '已全部更新');
+                          return cmdNote(res, t('已全部更新', 'Everything is up to date'));
                         })
                       }
                     >
-                      全部更新
+                      {t('全部更新', 'Update all')}
                     </button>
                   </div>
                 </div>
-                {markets === null && <p className="muted">加载中…</p>}
-                {markets && !markets.length && <p className="muted">没有已配置的市场源。</p>}
+                {markets === null && <p className="muted">{t('加载中…', 'Loading…')}</p>}
+                {markets && !markets.length && <p className="muted">{t('没有已配置的市场源。', 'No marketplaces configured.')}</p>}
                 {markets?.map((m) => (
                   <div key={m.name} className="list-row">
                     <div className="list-row-meta">
@@ -805,12 +798,12 @@ export default function SettingsModal({
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        if (!window.confirm(`移除市场源「${m.name}」？其下的插件会被一并卸载。`)) return;
+                        if (!window.confirm(t(`移除市场源「${m.name}」？其下的插件会被一并卸载。`, `Remove marketplace “${m.name}”? Its plugins will be uninstalled too.`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('marketplace_remove', { source: m.name });
                           await loadMarkets();
                           await loadPlugins();
-                          return cmdNote(res, '已移除');
+                          return cmdNote(res, t('已移除', 'Removed'));
                         });
                       }}
                     >
@@ -819,9 +812,9 @@ export default function SettingsModal({
                   </div>
                 ))}
                 <div className="add-form">
-                  <strong>添加市场源</strong>
+                  <strong>{t('添加市场源', 'Add marketplace')}</strong>
                   <input
-                    placeholder="源地址（git URL 或路径）"
+                    placeholder={t('源地址（git URL 或路径）', 'Source (Git URL or path)')}
                     value={marketSource}
                     onChange={(e) => setMarketSource(e.target.value)}
                   />
@@ -834,14 +827,14 @@ export default function SettingsModal({
                         const res = await invoke<CmdResult>('marketplace_add', {
                           source: marketSource.trim(),
                         });
-                        if (!res.ok) throw new Error(res.output || '添加失败');
+                        if (!res.ok) throw new Error(res.output || t('添加失败', 'Could not add'));
                         setMarketSource('');
                         await loadMarkets();
-                        return '已添加市场源';
+                        return t('已添加市场源', 'Marketplace added');
                       })
                     }
                   >
-                    添加源
+                    {t('添加源', 'Add source')}
                   </button>
                 </div>
               </>
@@ -852,58 +845,57 @@ export default function SettingsModal({
                 <div className="setting-card">
                   <div>
                     <strong>
-                      <Brain size={14} /> 记忆与偏好
+                      <Brain size={14} /> {t('记忆与偏好', 'Memory and preferences')}
                     </strong>
-                    <small>注入发生在会话启动时，改动将在下个新会话生效。</small>
+                    <small>{t('注入发生在会话启动时，改动将在下个新会话生效。', 'Rules are injected when a session starts. Changes apply to the next new session.')}</small>
                   </div>
                   <div className="pref-row">
                     <div className="pref-meta">
-                      <strong>ADHD 简洁风格</strong>
-                      <small>每轮会话注入简洁输出规则：下一步优先、少闲聊</small>
+                      <strong>{t('ADHD 简洁风格', 'ADHD concise style')}</strong>
+                      <small>{t('每轮会话注入简洁输出规则：下一步优先、少闲聊', 'Inject concise-output rules into each new session')}</small>
                     </div>
                     <Toggle
                       checked={config.adhdAlwaysOn}
                       onChange={(v) => {
                         onSaveConfig({ adhdAlwaysOn: v });
-                        noteIn('已保存，将在下个新会话生效');
+                        noteIn(t('已保存，将在下个新会话生效', 'Saved. Applies to the next new session'));
                       }}
                     />
                   </div>
                   <div className="pref-row">
                     <div className="pref-meta">
-                      <strong>自动记忆（热 MEMORY）</strong>
-                      <small>启用 grok 原生跨会话记忆（GROK_MEMORY），记住偏好与项目笔记</small>
+                      <strong>{t('自动记忆（热 MEMORY）', 'Auto memory (hot MEMORY)')}</strong>
+                      <small>{t('启用 grok 原生跨会话记忆（GROK_MEMORY），记住偏好与项目笔记', "Use grok's cross-session memory (GROK_MEMORY) for preferences and project notes")}</small>
                     </div>
                     <Toggle
                       checked={config.autoMemory}
                       onChange={(v) => {
                         onSaveConfig({ autoMemory: v });
-                        noteIn('已保存，将在下个新会话生效');
+                        noteIn(t('已保存，将在下个新会话生效', 'Saved. Applies to the next new session'));
                       }}
                     />
                   </div>
                   <div className="pref-row">
                     <div className="pref-meta">
-                      <strong>Memo 冷知识库</strong>
-                      <small>允许按需只读检索本机 memo-kb 冷知识库，默认关闭</small>
+                      <strong>{t('Memo 冷知识库', 'Memo knowledge base')}</strong>
+                      <small>{t('允许按需只读检索本机 memo-kb 冷知识库，默认关闭', 'Allow on-demand read-only memo-kb search. Off by default')}</small>
                     </div>
                     <Toggle
                       checked={config.memoKbEnabled}
                       onChange={(v) => {
                         onSaveConfig({ memoKbEnabled: v });
-                        noteIn('已保存，将在下个新会话生效');
+                        noteIn(t('已保存，将在下个新会话生效', 'Saved. Applies to the next new session'));
                       }}
                     />
                   </div>
                 </div>
 
                 <div className="setting-title-row">
-                  <strong>MEMORY 文件</strong>
+                  <strong>{t('MEMORY 文件', 'MEMORY files')}</strong>
                   <div className="field-btn-row">
                     <button className="btn" type="button" disabled={busy} onClick={() => void loadMemoryFiles()}>
                       <RefreshCw size={13} />
-                      刷新
-                    </button>
+                      {t('刷新', 'Refresh')}</button>
                     <button
                       className="btn"
                       type="button"
@@ -911,17 +903,17 @@ export default function SettingsModal({
                       onClick={() =>
                         void run(async () => {
                           await invoke('open_memory_folder');
-                          return '已打开记忆文件夹';
+                          return t('已打开记忆文件夹', 'Opened the memory folder');
                         })
                       }
                     >
                       <FolderOpen size={13} />
-                      打开记忆文件夹
+                      {t('打开记忆文件夹', 'Open memory folder')}
                     </button>
                   </div>
                 </div>
-                {memoryFiles === null && <p className="muted">加载中…</p>}
-                {memoryFiles && !memoryFiles.length && <p className="muted">未发现记忆文件。</p>}
+                {memoryFiles === null && <p className="muted">{t('加载中…', 'Loading…')}</p>}
+                {memoryFiles && !memoryFiles.length && <p className="muted">{t('未发现记忆文件。', 'No memory files yet.')}</p>}
                 {memoryFiles?.map((f) => (
                   <div key={f.path} className="memory-file-block">
                     <button
@@ -946,19 +938,19 @@ export default function SettingsModal({
                         <small>{f.path}</small>
                       </div>
                       <span className={`scope-badge ${f.scope}`}>
-                        {f.scope === 'global' ? '全局' : '工作区'}
+                        {f.scope === 'global' ? t('全局', 'Global') : t('工作区', 'Workspace')}
                       </span>
                       {f.exists ? (
                         <span className="memory-size">{fmtSize(f.size)}</span>
                       ) : (
-                        <span className="memory-missing">尚未创建</span>
+                        <span className="memory-missing">{t('尚未创建', 'Not created yet')}</span>
                       )}
                     </button>
                     {activeMemoryPath === f.path && (
                       <div className="memory-editor">
                         <textarea
                           value={memoryContent}
-                          placeholder={f.exists ? '' : '（文件尚未创建，保存后写入）'}
+                          placeholder={f.exists ? '' : t('（文件尚未创建，保存后写入）', '(file does not exist yet; saving will create it)')}
                           onChange={(e) => setMemoryContent(e.target.value)}
                           rows={8}
                         />
@@ -974,19 +966,18 @@ export default function SettingsModal({
                                   content: memoryContent,
                                 });
                                 await loadMemoryFiles();
-                                return '已保存记忆文件';
+                                return t('已保存记忆文件', 'Memory file saved');
                               })
                             }
                           >
                             <Save size={13} />
-                            保存
-                          </button>
+                            {t('保存', 'Save')}</button>
                           <button
                             className="btn"
                             type="button"
                             onClick={() => setActiveMemoryPath(null)}
                           >
-                            收起
+                            {t('收起', 'Collapse')}
                           </button>
                         </div>
                       </div>
@@ -998,12 +989,12 @@ export default function SettingsModal({
                   <div className="setting-title">
                     <span>
                       <i className={`status-dot ${memoStatus?.available ? 'online' : ''}`} />
-                      <strong>Memo 冷知识库</strong>
+                      <strong>{t('Memo 冷知识库', 'Memo knowledge base')}</strong>
                     </span>
                     <small>
                       {memoStatus
-                        ? memoStatus.detail || (memoStatus.available ? '可用' : '不可用')
-                        : '探测中…'}
+                        ? memoStatus.detail || (memoStatus.available ? t('可用', 'Available') : t('不可用', 'Unavailable'))
+                        : t('探测中…', 'Checking…')}
                     </small>
                   </div>
                   {config.memoKbEnabled ? (
@@ -1011,7 +1002,7 @@ export default function SettingsModal({
                       <div className="field-btn-row">
                         <input
                           className="inline-input"
-                          placeholder="输入关键词试搜知识库…"
+                          placeholder={t('输入关键词试搜知识库…', 'Try a knowledge-base search…')}
                           value={memoQuery}
                           onChange={(e) => setMemoQuery(e.target.value)}
                           onKeyDown={(e) => {
@@ -1019,8 +1010,8 @@ export default function SettingsModal({
                               setBusy(true);
                               setMemoResult('');
                               invoke<CmdResult>('memo_kb_search', { query: memoQuery.trim() })
-                                .then((res) => setMemoResult(res.ok ? res.output || '（无结果）' : '知识库暂不可用'))
-                                .catch(() => setMemoResult('知识库暂不可用'))
+                                .then((res) => setMemoResult(res.ok ? res.output || t('（无结果）', '(no results)') : t('知识库暂不可用', 'Knowledge base unavailable')))
+                                .catch(() => setMemoResult(t('知识库暂不可用', 'Knowledge base unavailable')))
                                 .finally(() => setBusy(false));
                             }
                           }}
@@ -1033,26 +1024,26 @@ export default function SettingsModal({
                             setBusy(true);
                             setMemoResult('');
                             invoke<CmdResult>('memo_kb_search', { query: memoQuery.trim() })
-                              .then((res) => setMemoResult(res.ok ? res.output || '（无结果）' : '知识库暂不可用'))
-                              .catch(() => setMemoResult('知识库暂不可用'))
+                              .then((res) => setMemoResult(res.ok ? res.output || t('（无结果）', '(no results)') : t('知识库暂不可用', 'Knowledge base unavailable')))
+                              .catch(() => setMemoResult(t('知识库暂不可用', 'Knowledge base unavailable')))
                               .finally(() => setBusy(false));
                           }}
                         >
                           <Search size={13} />
-                          试搜
+                          {t('试搜', 'Try search')}
                         </button>
                       </div>
                       {memoResult && <pre className="settings-output">{memoResult}</pre>}
                     </>
                   ) : (
-                    <p className="field-hint">开启「Memo 冷知识库」后可用。</p>
+                    <p className="field-hint">{t('开启「Memo 冷知识库」后可用。', 'Available after Memo knowledge base is turned on.')}</p>
                   )}
                 </div>
 
                 <div className="setting-card">
                   <div>
-                    <strong>清除记忆</strong>
-                    <small>workspace 作用于当前工作区；global 为全局；all 全部清除。</small>
+                    <strong>{t('清除记忆', 'Clear memory')}</strong>
+                    <small>{t('workspace 作用于当前工作区；global 为全局；all 全部清除。', 'workspace clears the current project; global clears the global memory; all clears both.')}</small>
                   </div>
                   <div className="field-btn-row">
                     <select
@@ -1060,9 +1051,9 @@ export default function SettingsModal({
                       value={memoryScope}
                       onChange={(e) => setMemoryScope(e.target.value as 'workspace' | 'global' | 'all')}
                     >
-                      <option value="workspace">当前工作区</option>
-                      <option value="global">全局</option>
-                      <option value="all">全部</option>
+                      <option value="workspace">{t('当前工作区', 'Current workspace')}</option>
+                      <option value="global">{t('全局', 'Global')}</option>
+                      <option value="all">{t('全部', 'All')}</option>
                     </select>
                     <button
                       className="btn danger"
@@ -1070,20 +1061,19 @@ export default function SettingsModal({
                       disabled={busy}
                       onClick={() => {
                         const label =
-                          memoryScope === 'workspace' ? '当前工作区' : memoryScope === 'global' ? '全局' : '全部';
-                        if (!window.confirm(`确定清除${label}记忆？此操作不可恢复。`)) return;
+                          memoryScope === 'workspace' ? t('当前工作区', 'Current workspace') : memoryScope === 'global' ? t('全局', 'Global') : t('全部', 'All');
+                        if (!window.confirm(t(`确定清除${label}记忆？此操作不可恢复。`, `Clear ${label} memory? This cannot be undone.`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('memory_clear', {
                             scope: memoryScope,
                             cwd: cwd || null,
                           });
-                          return cmdNote(res, '记忆已清除');
+                          return cmdNote(res, t('记忆已清除', 'Memory cleared'));
                         });
                       }}
                     >
                       <Trash2 size={13} />
-                      清除记忆
-                    </button>
+                      {t('清除记忆', 'Clear memory')}</button>
                   </div>
                 </div>
 
@@ -1094,11 +1084,10 @@ export default function SettingsModal({
                   <div className="field-btn-row">
                     <button className="btn" type="button" disabled={busy} onClick={() => void loadWorktrees()}>
                       <RefreshCw size={13} />
-                      刷新
-                    </button>
+                      {t('刷新', 'Refresh')}</button>
                     <input
                       className="inline-input narrow"
-                      placeholder="最大年龄，如 7d"
+                      placeholder={t('最大年龄，如 7d', 'Max age, for example 7d')}
                       value={gcAge}
                       onChange={(e) => setGcAge(e.target.value)}
                     />
@@ -1107,22 +1096,22 @@ export default function SettingsModal({
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        if (!window.confirm(`清理超过 ${gcAge || '指定时间'} 的 worktree？`)) return;
+                        if (!window.confirm(t(`清理超过 ${gcAge || '指定时间'} 的 worktree？`, `Clean worktrees older than ${gcAge || 'the given age'}?`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('worktree_gc', {
                             maxAge: gcAge.trim() || null,
                           });
                           await loadWorktrees();
-                          return cmdNote(res, '清理完成');
+                          return cmdNote(res, t('清理完成', 'Cleanup finished'));
                         });
                       }}
                     >
-                      清理过期
+                      {t('清理过期', 'Clean expired')}
                     </button>
                   </div>
                 </div>
-                {worktrees === null && <p className="muted">加载中…</p>}
-                {worktrees && !worktrees.length && <p className="muted">没有活跃的 worktree。</p>}
+                {worktrees === null && <p className="muted">{t('加载中…', 'Loading…')}</p>}
+                {worktrees && !worktrees.length && <p className="muted">{t('没有活跃的 worktree。', 'No active worktrees.')}</p>}
                 {worktrees?.map((w) => (
                   <div key={w.id} className="list-row">
                     <div className="list-row-meta">
@@ -1133,12 +1122,12 @@ export default function SettingsModal({
                       className="btn"
                       type="button"
                       disabled={busy}
-                      title="查看详情"
+                      title={t('查看详情', 'View details')}
                       onClick={() =>
                         void run(async () => {
                           const res = await invoke<CmdResult>('worktree_show', { id: w.id });
-                          sectionOutput('memory', res.output || '（无输出）');
-                          return res.ok ? '已加载详情' : '详情命令报错';
+                          sectionOutput('memory', res.output || t('（无输出）', '(no output)'));
+                          return res.ok ? t('已加载详情', 'Details loaded') : t('详情命令报错', 'The details command failed');
                         })
                       }
                     >
@@ -1148,10 +1137,10 @@ export default function SettingsModal({
                       className="btn"
                       type="button"
                       disabled={busy}
-                      title="救出该 worktree 的变更到指定目录"
+                      title={t('救出该 worktree 的变更到指定目录', "Salvage this worktree's changes into a directory")}
                       onClick={() => {
                         const out = window.prompt(
-                          '救出输出目录：',
+                          t('救出输出目录：', 'Salvage output directory:'),
                           `~/Desktop/grok-salvage-${w.id.slice(0, 8)}`,
                         );
                         if (!out || !out.trim()) return;
@@ -1160,9 +1149,9 @@ export default function SettingsModal({
                             id: w.id,
                             out: out.trim(),
                           });
-                          sectionOutput('memory', res.output || '（无输出）');
+                          sectionOutput('memory', res.output || t('（无输出）', '(no output)'));
                           await loadWorktrees();
-                          return cmdNote(res, 'salvage 完成');
+                          return cmdNote(res, t('salvage 完成', 'salvage finished'));
                         });
                       }}
                     >
@@ -1172,14 +1161,14 @@ export default function SettingsModal({
                       className="btn"
                       type="button"
                       disabled={busy}
-                      title="清理该 worktree 的产物"
+                      title={t('清理该 worktree 的产物', "Clean this worktree's artifacts")}
                       onClick={() => {
-                        if (!window.confirm(`清理 worktree「${w.id}」的产物？此操作真删不可恢复。`)) return;
+                        if (!window.confirm(t(`清理 worktree「${w.id}」的产物？此操作真删不可恢复。`, `Clean artifacts in worktree “${w.id}”? This permanently deletes them.`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('worktree_clean_artifacts', { id: w.id });
-                          sectionOutput('memory', res.output || '（无输出）');
+                          sectionOutput('memory', res.output || t('（无输出）', '(no output)'));
                           await loadWorktrees();
-                          return cmdNote(res, '产物清理完成');
+                          return cmdNote(res, t('产物清理完成', 'Artifact cleanup finished'));
                         });
                       }}
                     >
@@ -1189,13 +1178,13 @@ export default function SettingsModal({
                       className="btn"
                       type="button"
                       disabled={busy}
-                      title="分离（detach）"
+                      title={t('分离（detach）', 'Detach')}
                       onClick={() => {
-                        if (!window.confirm(`分离 worktree「${w.id}」？`)) return;
+                        if (!window.confirm(t(`分离 worktree「${w.id}」？`, `Detach worktree “${w.id}”?`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('worktree_detach', { id: w.id });
                           await loadWorktrees();
-                          return cmdNote(res, '已分离');
+                          return cmdNote(res, t('已分离', 'Detached'));
                         });
                       }}
                     >
@@ -1205,13 +1194,13 @@ export default function SettingsModal({
                       className="btn danger"
                       type="button"
                       disabled={busy}
-                      title="删除"
+                      title={t('删除', 'Delete')}
                       onClick={() => {
-                        if (!window.confirm(`删除 worktree「${w.id}」？`)) return;
+                        if (!window.confirm(t(`删除 worktree「${w.id}」？`, `Delete worktree “${w.id}”?`))) return;
                         void run(async () => {
                           const res = await invoke<CmdResult>('worktree_rm', { id: w.id });
                           await loadWorktrees();
-                          return cmdNote(res, '已删除');
+                          return cmdNote(res, t('已删除', 'Deleted'));
                         });
                       }}
                     >
@@ -1220,13 +1209,13 @@ export default function SettingsModal({
                   </div>
                 ))}
                 <div className="field-btn-row">
-                  <span className="field-hint">数据库维护：</span>
+                  <span className="field-hint">{t('数据库维护：', 'Database maintenance:')}</span>
                   <select
                     className="inline-select"
                     value={dbCommand}
                     onChange={(e) => setDbCommand(e.target.value as 'stats' | 'rebuild' | 'path')}
                   >
-                    <option value="stats">stats（默认）</option>
+                    <option value="stats">{t('stats（默认）', 'stats (default)')}</option>
                     <option value="rebuild">rebuild</option>
                     <option value="path">path</option>
                   </select>
@@ -1237,13 +1226,13 @@ export default function SettingsModal({
                     onClick={() =>
                       void run(async () => {
                         const res = await invoke<CmdResult>('worktree_db', { command: dbCommand });
-                        sectionOutput('memory', res.output || '（无输出）');
-                        return cmdNote(res, `db ${dbCommand} 完成`);
+                        sectionOutput('memory', res.output || t('（无输出）', '(no output)'));
+                        return cmdNote(res, t(`db ${dbCommand} 完成`, `db ${dbCommand} finished`));
                       })
                     }
                   >
                     <Database size={13} />
-                    执行
+                    {t('执行', 'Run')}
                   </button>
                 </div>
               </>
@@ -1255,12 +1244,12 @@ export default function SettingsModal({
                   <div className="setting-title">
                     <span>
                       <Smartphone size={14} />
-                      <strong>手机当第二块屏</strong>
+                      <strong>{t('手机当第二块屏', 'Use your phone as a second screen')}</strong>
                     </span>
                     <i className={`status-dot ${companion?.enabled ? 'online' : ''}`} />
                   </div>
                   <p className="muted">
-                    打开后，同一 Wi-Fi（或 Tailscale）上的手机可以扫码进入已登记的工作区。配对会跨断网和应用重启保留，工具仍在这台 Mac 上执行；只有主动关闭联动或更换令牌才会撤销旧手机。
+                    {t('打开后，同一 Wi-Fi（或 Tailscale）上的手机可以扫码进入已登记的工作区。配对会跨断网和应用重启保留，工具仍在这台 Mac 上执行；只有主动关闭联动或更换令牌才会撤销旧手机。', 'When this is on, a phone on the same Wi-Fi or Tailscale network can scan the code and open registered workspaces. Pairing survives disconnects and app restarts. Tools still run on this Mac. Only turning the companion off or rotating the token disconnects old phones.')}
                   </p>
                   <div className="field-btn-row">
                     <button
@@ -1273,11 +1262,11 @@ export default function SettingsModal({
                             ? await invoke<CompanionStatus>('companion_disable')
                             : await invoke<CompanionStatus>('companion_enable');
                           setCompanion(st);
-                          return st.enabled ? '手机联动已打开' : '手机联动已关闭';
+                          return st.enabled ? t('手机联动已打开', 'Phone companion is on') : t('手机联动已关闭', 'Phone companion is off');
                         })
                       }
                     >
-                      {companion?.enabled ? '关闭联动' : '打开联动'}
+                      {companion?.enabled ? t('关闭联动', 'Turn off companion') : t('打开联动', 'Turn on companion')}
                     </button>
                     {companion?.enabled && (
                       <button
@@ -1288,11 +1277,11 @@ export default function SettingsModal({
                           void run(async () => {
                             const st = await invoke<CompanionStatus>('companion_rotate_token');
                             setCompanion(st);
-                            return '已更换令牌，请重新扫码';
+                            return t('已更换令牌，请重新扫码', 'Token rotated. Scan the new code');
                           })
                         }
                       >
-                        更换令牌
+                        {t('更换令牌', 'Rotate token')}
                       </button>
                     )}
                   </div>
@@ -1300,7 +1289,7 @@ export default function SettingsModal({
                 {companion?.enabled && companion.urls[0] && (
                   <div className="setting-card">
                     <div className="setting-title">
-                      <strong>用手机相机扫码</strong>
+                      <strong>{t('用手机相机扫码', 'Scan with the phone camera')}</strong>
                     </div>
                     {companion.qrSvg ? (
                       <div
@@ -1312,48 +1301,76 @@ export default function SettingsModal({
                       {companion.urls[0]}
                     </p>
                     {companion.urls.length > 1 && (
-                      <p className="muted">其它地址：{companion.urls.slice(1).join(' · ')}</p>
+                      <p className="muted">{t('其它地址：', 'Other addresses: ')}{companion.urls.slice(1).join(' · ')}</p>
                     )}
                     <button
                       className="btn"
                       type="button"
                       onClick={() => {
                         void navigator.clipboard.writeText(companion.urls[0]).then(
-                          () => flash('已复制链接'),
-                          () => flash('复制失败'),
+                          () => flash(t('已复制链接', 'Link copied')),
+                          () => flash(t('复制失败', 'Copy failed')),
                         );
                       }}
                     >
-                      复制链接
-                    </button>
+                      {t('复制链接', 'Copy link')}</button>
                   </div>
                 )}
               </>
             )}
 
             {section === 'theme' && (
-              <div className="field">
-                <span>外观主题（同步原生窗口）</span>
-                <div className="theme-picker">
-                  {(
-                    [
-                      { id: 'system', label: '系统', icon: <Monitor size={15} /> },
-                      { id: 'light', label: '浅色', icon: <Sun size={15} /> },
-                      { id: 'dark', label: '深色', icon: <Moon size={15} /> },
-                    ] as const
-                  ).map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={config.theme === t.id ? 'active' : ''}
-                      onClick={() => onSaveConfig({ theme: t.id })}
-                    >
-                      {t.icon}
-                      {t.label}
-                    </button>
-                  ))}
+              <>
+                <div className="field">
+                  <span>{t('界面语言', 'Language')}</span>
+                  <div className="theme-picker">
+                    {(
+                      [
+                        { id: 'system', label: t('跟随系统', 'System') },
+                        { id: 'zh', label: '中文' },
+                        { id: 'en', label: 'English' },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={(config.locale || 'system') === item.id ? 'active' : ''}
+                        onClick={() => onSaveConfig({ locale: item.id })}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="field-hint">
+                    {t(
+                      '默认跟随系统语言。手机联动使用同一个选择；选「跟随系统」时，电脑和手机各自按自己的系统语言显示。',
+                      'Defaults to the system language. The phone companion uses the same choice. System lets each device follow its own language.',
+                    )}
+                  </p>
                 </div>
-              </div>
+                <div className="field">
+                  <span>{t('外观主题（同步原生窗口）', 'Appearance (also updates the window)')}</span>
+                  <div className="theme-picker">
+                    {(
+                      [
+                        { id: 'system', label: t('系统', 'System'), icon: <Monitor size={15} /> },
+                        { id: 'light', label: t('浅色', 'Light'), icon: <Sun size={15} /> },
+                        { id: 'dark', label: t('深色', 'Dark'), icon: <Moon size={15} /> },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={config.theme === item.id ? 'active' : ''}
+                        onClick={() => onSaveConfig({ theme: item.id })}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
             {section === 'diagnostics' && (
@@ -1366,24 +1383,24 @@ export default function SettingsModal({
                     onClick={() =>
                       void run(async () => {
                         const res = await invoke<CmdResult>('doctor');
-                        sectionOutput('diagnostics', res.output || (res.ok ? 'doctor 通过' : 'doctor 失败'));
-                        return res.ok ? 'doctor 完成' : 'doctor 报告了问题';
+                        sectionOutput('diagnostics', res.output || (res.ok ? t('doctor 通过', 'doctor passed') : t('doctor 失败', 'doctor failed')));
+                        return res.ok ? t('doctor 完成', 'doctor finished') : t('doctor 报告了问题', 'doctor reported problems');
                       })
                     }
                   >
                     <Stethoscope size={14} />
-                    运行 doctor
+                    {t('运行 doctor', 'Run doctor')}
                   </button>
                   <button
                     className="btn"
                     type="button"
                     disabled={busy || !cwd}
-                    title={cwd ? '' : '需要先选择工作区'}
+                    title={cwd ? '' : t('需要先选择工作区', 'Choose a workspace first')}
                     onClick={() =>
                       void run(async () => {
                         const raw = await invoke<unknown>('extension_status', { cwd });
                         sectionOutput('diagnostics', JSON.stringify(raw, null, 2));
-                        return 'inspect --json 完成';
+                        return t('inspect --json 完成', 'inspect --json finished');
                       })
                     }
                   >
@@ -1398,7 +1415,7 @@ export default function SettingsModal({
                       void run(async () => {
                         const raw = await invoke<CoreStatus>('core_status');
                         sectionOutput('diagnostics', JSON.stringify(raw, null, 2));
-                        return 'core_status 完成';
+                        return t('core_status 完成', 'core_status finished');
                       })
                     }
                   >
@@ -1411,7 +1428,7 @@ export default function SettingsModal({
                   <div className="setting-title">
                     <span>
                       <HardDrive size={14} />
-                      <strong>磁盘占用</strong>
+                      <strong>{t('磁盘占用', 'Disk usage')}</strong>
                     </span>
                     {diskUsage?.grokHome ? <small>{diskUsage.grokHome}</small> : null}
                   </div>
@@ -1442,29 +1459,29 @@ export default function SettingsModal({
                               })
                               .filter((x): x is { name: string; bytes: number } => !!x),
                           });
-                          return '磁盘占用已加载';
+                          return t('磁盘占用已加载', 'Disk usage loaded');
                         })
                       }
                     >
-                      统计磁盘占用
+                      {t('统计磁盘占用', 'Measure disk usage')}
                     </button>
                   ) : (
                     <>
                       <div className="usage-stat-row">
                         <span className="usage-stat">
-                          <small>~/.grok 总占用</small>
+                          <small>{t('~/.grok 总占用', 'Total ~/.grok usage')}</small>
                           <strong>{fmtSize(diskUsage.totalBytes)}</strong>
                         </span>
                         {diskUsage.volumeAvailableBytes !== undefined && (
                           <span className="usage-stat">
-                            <small>卷剩余</small>
+                            <small>{t('卷剩余', 'Volume free')}</small>
                             <strong>{fmtSize(diskUsage.volumeAvailableBytes)}</strong>
                           </span>
                         )}
                       </div>
                       {diskUsage.topDirs.length > 0 && (
                         <div className="usage-top">
-                          <div className="usage-sub-title">占用最高的目录</div>
+                          <div className="usage-sub-title">{t('占用最高的目录', 'Largest directories')}</div>
                           {diskUsage.topDirs.slice(0, 5).map((d) => (
                             <div key={d.name} className="usage-top-row">
                               <span className="usage-top-title" title={d.name}>
@@ -1478,7 +1495,7 @@ export default function SettingsModal({
                     </>
                   )}
                 </div>
-                <p className="field-hint">MCP 诊断请使用「MCP 服务器」分区的 mcp doctor。</p>
+                <p className="field-hint">{t('MCP 诊断请使用「MCP 服务器」分区的 mcp doctor。', 'For MCP checks, use mcp doctor in the MCP servers section.')}</p>
               </>
             )}
 

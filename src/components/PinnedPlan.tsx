@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PlanEntry } from '../types';
 import { Check, ChevronDown, ChevronUp, ListTodo, Loader2 } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   entries: PlanEntry[];
@@ -32,7 +34,7 @@ export default function PinnedPlan({ entries }: Props) {
       >
         <ListTodo size={13} />
         <span className="pinned-plan-title">
-          计划 · {done}/{total}
+          {t('计划', 'Plan')} · {done}/{total}
         </span>
         <span className="pinned-plan-progress">
           <i style={{ width: `${pct}%` }} />

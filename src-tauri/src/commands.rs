@@ -105,7 +105,7 @@ async fn resolve_grok_path() -> Result<PathBuf, String> {
             }
         }
     }
-    Err("未找到 grok CLI：已检查 ~/.grok/bin/grok、~/.local/bin/grok 以及登录 shell 的 PATH；请先安装 Grok CLI".into())
+    Err(crate::i18n::t("未找到 grok CLI：已检查 ~/.grok/bin/grok、~/.local/bin/grok 以及登录 shell 的 PATH；请先安装 Grok CLI", "grok CLI was not found in ~/.grok/bin/grok, ~/.local/bin/grok, or the login shell PATH. Install the Grok CLI first"))
 }
 
 /// Homebrew Framework 的 Python.app 会出现在 Dock。uvx --python 3.12 会选中它。
@@ -129,6 +129,10 @@ fn ensure_uv_nodock_path() -> Option<PathBuf> {
     let py = unix_cpython_312()?;
     let dir = crate::config::app_home().ok()?.join("bin");
     std::fs::create_dir_all(&dir).ok()?;
+    let missing = crate::i18n::t(
+        "grok-builder: 找不到真正的",
+        "grok-builder: could not find",
+    );
     let script = format!(
         r#"#!/bin/bash
 name=$(basename "$0")
@@ -143,7 +147,7 @@ for d in $PATH; do
 done
 IFS=$oifs
 if [ -z "$REAL" ]; then
-  echo "grok-builder: 找不到真正的 $name" >&2
+  echo "{missing} $name" >&2
   exit 127
 fi
 PY="{py}"
@@ -165,6 +169,7 @@ while [ $# -gt 0 ]; do
 done
 exec "$REAL" "${{args[@]}}"
 "#,
+        missing = missing,
         py = py.display()
     );
     for name in ["uvx", "uv"] {
@@ -213,7 +218,7 @@ async fn exec(
     }
     let o = timeout(Duration::from_secs(secs), child.wait_with_output())
         .await
-        .map_err(|_| "命令超时".to_string())?
+        .map_err(|_| crate::i18n::t("命令超时", "Command timed out"))?
         .map_err(|e| e.to_string())?;
     let mut text = String::from_utf8_lossy(&o.stdout).to_string();
     if !o.status.success() || text.trim().is_empty() {
@@ -255,11 +260,11 @@ async fn rpc(agent: &Agent, id: u64, method: &str, params: Value) -> Result<Valu
         .writer
         .send(json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))
         .await
-        .map_err(|_| "ACP 写入通道已关闭".to_string())?;
+        .map_err(|_| crate::i18n::t("ACP 写入通道已关闭", "The ACP write channel is closed"))?;
     timeout(Duration::from_secs(90), rx)
         .await
-        .map_err(|_| format!("ACP {method} 超时"))?
-        .map_err(|_| "ACP 回包通道关闭".to_string())?
+        .map_err(|_| (if crate::i18n::is_en() { format!("ACP {method} timed out") } else { format!("ACP {method} 超时") }))?
+        .map_err(|_| crate::i18n::t("ACP 回包通道关闭", "The ACP response channel is closed"))?
 }
 
 async fn spawn_agent(
@@ -290,7 +295,7 @@ async fn spawn_agent(
             None => {
                 let _ = app.emit(
                     "core-log",
-                    "superpowers 未安装（或 plugin list 未找到 path），SP 开关无效".to_string(),
+                    crate::i18n::t("superpowers 未安装（或 plugin list 未找到 path），SP 开关无效", "superpowers is not installed (plugin list has no path). The switch has no effect"),
                 );
             }
         }
@@ -315,10 +320,10 @@ async fn spawn_agent(
         let path = std::env::var("PATH").unwrap_or_default();
         cmd.env("PATH", format!("{}:{path}", wrap.display()));
     }
-    let mut child = cmd.spawn().map_err(|e| format!("无法启动 Grok CLI: {e}"))?;
-    let stdin = child.stdin.take().ok_or("无法连接 ACP stdin")?;
-    let stdout = child.stdout.take().ok_or("无法连接 ACP stdout")?;
-    let stderr = child.stderr.take().ok_or("无法连接 ACP stderr")?;
+    let mut child = cmd.spawn().map_err(|e| (if crate::i18n::is_en() { format!("Could not start the Grok CLI: {e}") } else { format!("无法启动 Grok CLI: {e}") }))?;
+    let stdin = child.stdin.take().ok_or(crate::i18n::t("无法连接 ACP stdin", "Could not connect ACP stdin"))?;
+    let stdout = child.stdout.take().ok_or(crate::i18n::t("无法连接 ACP stdout", "Could not connect ACP stdout"))?;
+    let stderr = child.stderr.take().ok_or(crate::i18n::t("无法连接 ACP stderr", "Could not connect ACP stderr"))?;
     let (child_tx, mut child_rx) = mpsc::channel::<Value>(128);
     tokio::spawn(async move {
         let mut w = stdin;
@@ -476,9 +481,9 @@ pub async fn core_status() -> Result<CoreStatus, String> {
         version: version.trim().into(),
         authenticated,
         auth_message: if authenticated {
-            "检测到共享 Grok 登录凭据".into()
+            crate::i18n::t("检测到共享 Grok 登录凭据", "Found a shared Grok login")
         } else {
-            "尚未登录；点击登录后在终端完成官方认证".into()
+            crate::i18n::t("尚未登录；点击登录后在终端完成官方认证", "Not signed in. Use Log in and finish the official sign-in in Terminal")
         },
         models,
         inspect,
@@ -636,7 +641,7 @@ async fn respawn_keep_session(
     sp_override: Option<bool>,
 ) -> Result<(String, bool, Option<String>, bool), String> {
     let mut guard = state.agent.lock().await;
-    let old = guard.take().ok_or("没有活动会话")?;
+    let old = guard.take().ok_or(crate::i18n::t("没有活动会话", "No active session"))?;
     let perm = perm_override.unwrap_or_else(|| old.perm_mode.clone());
     let sp = sp_override.unwrap_or(old.sp_enabled);
     if perm == old.perm_mode && sp == old.sp_enabled {
@@ -715,10 +720,10 @@ pub async fn rename_session(
 ) -> Result<CmdResult, String> {
     let title = title.trim().to_string();
     if title.is_empty() {
-        return Err("标题不能为空".into());
+        return Err(crate::i18n::t("标题不能为空", "Title cannot be empty"));
     }
     if !Path::new(&cwd).is_dir() {
-        return Err("项目目录不存在".into());
+        return Err(crate::i18n::t("项目目录不存在", "The project folder does not exist"));
     }
     // _x.ai/session/rename 无需 session/load，initialize 后即可用（实测）；
     // 没有活动 agent 就按当前 config spawn 一个并留作常驻复用。
@@ -740,15 +745,15 @@ pub async fn rename_session(
             Ok(CmdResult {
                 ok,
                 output: if ok {
-                    format!("已重命名为 {title}")
+                    (if crate::i18n::is_en() { format!("Renamed to {title}") } else { format!("已重命名为 {title}") })
                 } else {
-                    format!("重命名失败：{v}")
+                    (if crate::i18n::is_en() { format!("Rename failed: {v}") } else { format!("重命名失败：{v}") })
                 },
             })
         }
         Err(e) => Ok(CmdResult {
             ok: false,
-            output: format!("重命名失败：{e}"),
+            output: (if crate::i18n::is_en() { format!("Rename failed: {e}") } else { format!("重命名失败：{e}") }),
         }),
     }
 }
@@ -954,7 +959,7 @@ pub async fn start_session(
     restore_code: Option<bool>,
 ) -> Result<Value, String> {
     if !Path::new(&cwd).is_dir() {
-        return Err("项目目录不存在".into());
+        return Err(crate::i18n::t("项目目录不存在", "The project folder does not exist"));
     }
     let is_resume = session_id.is_some();
     // 权限模式只能 spawn 决定；空值按 plan 处理
@@ -1049,7 +1054,7 @@ pub async fn start_session(
         .and_then(Value::as_str)
         .map(str::to_string)
         .or_else(|| params_session_id.clone())
-        .ok_or("ACP 未返回 sessionId")?;
+        .ok_or(crate::i18n::t("ACP 未返回 sessionId", "ACP did not return a sessionId"))?;
     a.session_id = Some(sid.clone());
     if let Some(opts) = result.get("configOptions").cloned() {
         a.config_options = opts;
@@ -1098,12 +1103,12 @@ const MAX_RESOURCE_TEXT_BYTES: u64 = 512 * 1024;
 /// 单个附件 → ACP 内容块。Ok(None) = 跳过（记入 skipped）。
 fn build_attachment_block(att: &AttachmentInput) -> Result<Option<Value>, String> {
     let path = PathBuf::from(att.path.trim());
-    let meta = std::fs::metadata(&path).map_err(|e| format!("附件 {} 读取失败：{e}", att.name))?;
+    let meta = std::fs::metadata(&path).map_err(|e| (if crate::i18n::is_en() { format!("Could not read attachment {}: {e}", att.name) } else { format!("附件 {} 读取失败：{e}", att.name) }))?;
     if att.mime_type.starts_with("image/") {
         if meta.len() > MAX_IMAGE_BYTES {
             return Ok(None); // 图片 >10MB 跳过并注明
         }
-        let bytes = std::fs::read(&path).map_err(|e| format!("附件 {} 读取失败：{e}", att.name))?;
+        let bytes = std::fs::read(&path).map_err(|e| (if crate::i18n::is_en() { format!("Could not read attachment {}: {e}", att.name) } else { format!("附件 {} 读取失败：{e}", att.name) }))?;
         let data = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
         return Ok(Some(
             json!({"type":"image","data":data,"mimeType":att.mime_type}),
@@ -1135,16 +1140,16 @@ pub async fn send_prompt(
     for att in attachments.unwrap_or_default() {
         match build_attachment_block(&att) {
             Ok(Some(b)) => blocks.push(b),
-            Ok(None) => skipped.push(format!("{}：图片超过 10 MB 限制", att.name)),
+            Ok(None) => skipped.push((if crate::i18n::is_en() { format!("{}: image is over the 10 MB limit", att.name) } else { format!("{}：图片超过 10 MB 限制", att.name) })),
             Err(e) => skipped.push(e),
         }
     }
     blocks.push(json!({"type":"text","text":text}));
     let guard = state.agent.lock().await;
-    let a = guard.as_ref().ok_or("请先创建或恢复会话")?;
-    let sid = a.session_id.clone().ok_or("会话尚未就绪")?;
+    let a = guard.as_ref().ok_or(crate::i18n::t("请先创建或恢复会话", "Create or restore a session first"))?;
+    let sid = a.session_id.clone().ok_or(crate::i18n::t("会话尚未就绪", "The session is not ready yet"))?;
     let prompt_epoch =
-        crate::companion::try_begin_prompt().ok_or_else(|| "上一轮尚未结束".to_string())?;
+        crate::companion::try_begin_prompt().ok_or_else(|| crate::i18n::t("上一轮尚未结束", "The previous turn is still running"))?;
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     let pending = a.pending.clone();
     let writer = a.writer.clone();
@@ -1158,7 +1163,7 @@ pub async fn send_prompt(
     {
         crate::companion::finish_prompt(prompt_epoch);
         crate::companion::emit_state(&app);
-        return Err("ACP 已关闭".into());
+        return Err(crate::i18n::t("ACP 已关闭", "ACP is closed"));
     }
     drop(guard);
     emit_acp(&app, json!({"kind":"user_echo","text":text}));
@@ -1182,7 +1187,7 @@ pub async fn send_prompt(
                     crate::companion::emit_state(&app);
                     emit_acp(
                         &app,
-                        json!({"kind":"prompt_error","error":"ACP 回包通道关闭"}),
+                        json!({"kind":"prompt_error","error": crate::i18n::t("ACP 回包通道关闭", "The ACP response channel is closed")}),
                     );
                 }
             }
@@ -1194,12 +1199,12 @@ pub async fn send_prompt(
 #[tauri::command]
 pub async fn cancel_session(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let g = state.agent.lock().await;
-    let a = g.as_ref().ok_or("没有运行中的会话")?;
-    let sid = a.session_id.clone().ok_or("会话尚未就绪")?;
+    let a = g.as_ref().ok_or(crate::i18n::t("没有运行中的会话", "No session is running"))?;
+    let sid = a.session_id.clone().ok_or(crate::i18n::t("会话尚未就绪", "The session is not ready yet"))?;
     a.writer
         .send(json!({"jsonrpc":"2.0","method":"session/cancel","params":{"sessionId":sid}}))
         .await
-        .map_err(|_| "ACP 已关闭".to_string())?;
+        .map_err(|_| crate::i18n::t("ACP 已关闭", "ACP is closed"))?;
     drop(g);
     crate::companion::set_prompt_busy(false);
     crate::companion::emit_state(&app);
@@ -1224,7 +1229,7 @@ pub async fn permission_reply(
     option_id: Option<String>,
 ) -> Result<(), String> {
     let g = state.agent.lock().await;
-    let a = g.as_ref().ok_or("Agent 已关闭")?;
+    let a = g.as_ref().ok_or(crate::i18n::t("Agent 已关闭", "The agent is closed"))?;
     let result = match option_id {
         Some(id) => json!({"outcome":{"outcome":"selected","optionId":id}}),
         None => json!({"outcome":{"outcome":"cancelled"}}),
@@ -1232,7 +1237,7 @@ pub async fn permission_reply(
     a.writer
         .send(json!({"jsonrpc":"2.0","id":request_id,"result":result}))
         .await
-        .map_err(|_| "ACP 已关闭".to_string())
+        .map_err(|_| crate::i18n::t("ACP 已关闭", "ACP is closed"))
 }
 #[tauri::command]
 pub async fn ask_reply(
@@ -1242,7 +1247,7 @@ pub async fn ask_reply(
     answers: Option<Value>,
 ) -> Result<(), String> {
     let g = state.agent.lock().await;
-    let a = g.as_ref().ok_or("Agent 已关闭")?;
+    let a = g.as_ref().ok_or(crate::i18n::t("Agent 已关闭", "The agent is closed"))?;
     // 回应 _x.ai/ask_user_question：answers 以问题原文为 key，value 为 string / string[]（多选）/ 自定义文本
     let result = if outcome == "accepted" {
         json!({"outcome":"accepted","answers":answers.unwrap_or_else(|| json!({}))})
@@ -1252,7 +1257,7 @@ pub async fn ask_reply(
     a.writer
         .send(json!({"jsonrpc":"2.0","id":request_id,"result":result}))
         .await
-        .map_err(|_| "ACP 已关闭".to_string())
+        .map_err(|_| crate::i18n::t("ACP 已关闭", "ACP is closed"))
 }
 #[tauri::command]
 pub async fn exit_plan_reply(
@@ -1262,7 +1267,7 @@ pub async fn exit_plan_reply(
     feedback: Option<String>,
 ) -> Result<(), String> {
     let g = state.agent.lock().await;
-    let a = g.as_ref().ok_or("Agent 已关闭")?;
+    let a = g.as_ref().ok_or(crate::i18n::t("Agent 已关闭", "The agent is closed"))?;
     // 回应 _x.ai/exit_plan_mode；不回包 agent 会永久挂起（实测卡死）
     let result = match outcome.as_str() {
         "approved" => json!({"outcome":"approved"}),
@@ -1275,7 +1280,7 @@ pub async fn exit_plan_reply(
     a.writer
         .send(json!({"jsonrpc":"2.0","id":request_id,"result":result}))
         .await
-        .map_err(|_| "ACP 已关闭".to_string())
+        .map_err(|_| crate::i18n::t("ACP 已关闭", "ACP is closed"))
 }
 #[tauri::command]
 pub async fn set_session_option(
@@ -1284,8 +1289,8 @@ pub async fn set_session_option(
     value: String,
 ) -> Result<Value, String> {
     let g = state.agent.lock().await;
-    let a = g.as_ref().ok_or("没有活动会话")?;
-    let sid = a.session_id.clone().ok_or("会话尚未就绪")?;
+    let a = g.as_ref().ok_or(crate::i18n::t("没有活动会话", "No active session"))?;
+    let sid = a.session_id.clone().ok_or(crate::i18n::t("会话尚未就绪", "The session is not ready yet"))?;
     // 实测协议：params 为 {sessionId, configId, value: "<string>"}（value 是纯字符串）。
     // configId 可用 option id（"model"/"reasoning_effort"）或 category（"model"/"thought_level"）。
     let mut cid = config_id.clone();
@@ -1323,7 +1328,7 @@ pub async fn set_session_mode(
     // 真正的切换 = 杀 agent → 用新 --permission-mode spawn → session/load 恢复原会话（respawn_keep_session）。
     let mode = mode_id.trim().to_string();
     if mode.is_empty() {
-        return Err("modeId 不能为空".into());
+        return Err(crate::i18n::t("modeId 不能为空", "modeId cannot be empty"));
     }
     let (perm, _sp, sid, _restarted) = respawn_keep_session(&app, &state, Some(mode), None).await?;
     crate::companion::patch_live(
@@ -1372,7 +1377,7 @@ pub async fn switch_update_channel(
     let flag = match channel.as_str() {
         "alpha" => "--alpha",
         "stable" => "--stable",
-        _ => return Err("channel 只能是 alpha 或 stable".into()),
+        _ => return Err(crate::i18n::t("channel 只能是 alpha 或 stable", "channel must be alpha or stable")),
     };
     if let Some(agent) = state.agent.lock().await.take() {
         agent
@@ -1397,7 +1402,7 @@ async fn launch_terminal_command(app: &AppHandle, subcommand: &str) -> Result<()
         .args(["-e", &script])
         .output()
         .await
-        .map_err(|e| format!("无法打开登录终端：{e}"))?;
+        .map_err(|e| (if crate::i18n::is_en() { format!("Could not open the login terminal: {e}") } else { format!("无法打开登录终端：{e}") }))?;
     if !result.status.success() {
         return Err(String::from_utf8_lossy(&result.stderr).trim().to_string());
     }
@@ -1454,32 +1459,32 @@ pub async fn read_file(root: String, path: String) -> Result<String, String> {
     let base = std::fs::canonicalize(root).map_err(|e| e.to_string())?;
     let target = std::fs::canonicalize(base.join(path)).map_err(|e| e.to_string())?;
     if !target.starts_with(&base) {
-        return Err("路径越界".into());
+        return Err(crate::i18n::t("路径越界", "Path is not allowed"));
     }
     let m = std::fs::metadata(&target).map_err(|e| e.to_string())?;
     if m.len() > 2_000_000 {
-        return Err("文件超过 2 MB 预览限制".into());
+        return Err(crate::i18n::t("文件超过 2 MB 预览限制", "File is over the 2 MB preview limit"));
     }
     let data = std::fs::read(&target).map_err(|e| e.to_string())?;
-    String::from_utf8(data).map_err(|_| "暂不预览二进制文件".into())
+    String::from_utf8(data).map_err(|_| crate::i18n::t("暂不预览二进制文件", "Binary files are not previewed"))
 }
 
 #[tauri::command]
 pub async fn open_in_finder(path: String) -> Result<(), String> {
     let p = PathBuf::from(path.trim());
     if !p.exists() {
-        return Err("路径不存在".into());
+        return Err(crate::i18n::t("路径不存在", "Path does not exist"));
     }
     // open -R：在访达中显示并选中（不走 grok exec 助手，与 grok CLI 无关）
     let status = std::process::Command::new("/usr/bin/open")
         .arg("-R")
         .arg(&p)
         .status()
-        .map_err(|e| format!("无法打开访达：{e}"))?;
+        .map_err(|e| (if crate::i18n::is_en() { format!("Could not open Finder: {e}") } else { format!("无法打开访达：{e}") }))?;
     if status.success() {
         Ok(())
     } else {
-        Err("open -R 命令失败".into())
+        Err(crate::i18n::t("open -R 命令失败", "open -R failed"))
     }
 }
 
@@ -1509,19 +1514,19 @@ pub async fn mcp_add(
 ) -> Result<CmdResult, String> {
     let name = name.trim().to_string();
     if name.is_empty() {
-        return Err("MCP 服务器名称不能为空".into());
+        return Err(crate::i18n::t("MCP 服务器名称不能为空", "MCP server name cannot be empty"));
     }
     let mut owned: Vec<String> = vec!["mcp".into(), "add".into()];
     if let Some(t) = transport.filter(|s| !s.trim().is_empty()) {
         match t.as_str() {
             "stdio" | "http" | "sse" => owned.extend(["--transport".into(), t]),
-            _ => return Err("transport 只能是 stdio/http/sse".into()),
+            _ => return Err(crate::i18n::t("transport 只能是 stdio/http/sse", "transport must be stdio, http, or sse")),
         }
     }
     if let Some(s) = scope.filter(|s| !s.trim().is_empty()) {
         match s.as_str() {
             "user" | "project" => owned.extend(["--scope".into(), s]),
-            _ => return Err("scope 只能是 user/project".into()),
+            _ => return Err(crate::i18n::t("scope 只能是 user/project", "scope must be user or project")),
         }
     }
     for e in env.unwrap_or_default() {
@@ -1632,7 +1637,7 @@ pub async fn plugin_list() -> Result<Value, String> {
 pub async fn plugin_install(source: String) -> Result<CmdResult, String> {
     let source = source.trim().to_string();
     if source.is_empty() {
-        return Err("插件来源不能为空".into());
+        return Err(crate::i18n::t("插件来源不能为空", "Plugin source cannot be empty"));
     }
     // --trust：非交互环境下跳过确认提示
     run_cmd(&["plugin", "install", "--trust", &source], None, 120).await
@@ -1658,7 +1663,7 @@ pub async fn memory_clear(scope: Option<String>, cwd: Option<String>) -> Result<
         "workspace" => "--workspace",
         "global" => "--global",
         "all" => "--all",
-        _ => return Err("scope 只能是 workspace/global/all".into()),
+        _ => return Err(crate::i18n::t("scope 只能是 workspace/global/all", "scope must be workspace, global, or all")),
     };
     run_cmd(&["memory", "clear", flag, "--yes"], cwd.as_deref(), 30).await
 }
@@ -1696,7 +1701,7 @@ pub async fn fork_session(
     session_id: String,
 ) -> Result<Value, String> {
     if !Path::new(&cwd).is_dir() {
-        return Err("项目目录不存在".into());
+        return Err(crate::i18n::t("项目目录不存在", "The project folder does not exist"));
     }
     // _x.ai/session/fork 与 rename 一样 initialize 后即可用；复用常驻 agent 池语义
     let mut guard = state.agent.lock().await;
@@ -1745,7 +1750,7 @@ pub async fn worktree_salvage(id: String, out: String) -> Result<CmdResult, Stri
     // --help 实测：--out <OUT> 与 <ID_OR_PATH> 均必填
     let out = out.trim().to_string();
     if out.is_empty() {
-        return Err("salvage 输出目录不能为空".into());
+        return Err(crate::i18n::t("salvage 输出目录不能为空", "The salvage output directory cannot be empty"));
     }
     run_cmd(&["worktree", "salvage", "--out", &out, &id], None, 60).await
 }
@@ -1776,7 +1781,7 @@ pub async fn marketplace_list() -> Result<Value, String> {
 pub async fn marketplace_add(source: String) -> Result<CmdResult, String> {
     let source = source.trim().to_string();
     if source.is_empty() {
-        return Err("市场源不能为空".into());
+        return Err(crate::i18n::t("市场源不能为空", "Marketplace source cannot be empty"));
     }
     run_cmd(&["plugin", "marketplace", "add", &source], None, 60).await
 }

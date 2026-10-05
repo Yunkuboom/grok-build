@@ -12,6 +12,7 @@ import {
   invoke,
   listen,
 } from '../bridge';
+import { applyLocalePref, useI18n, t} from '../i18n';
 import {
   DEFAULT_CONFIG,
   EFFORT_FALLBACK,
@@ -62,6 +63,7 @@ function historyToMessages(history: HistoryMessage[] | undefined, ts?: number): 
 }
 
 export default function MobileApp() {
+  useI18n();
   const [tokenInput, setTokenInput] = useState('');
   const [conn, setConn] = useState<Conn>('connecting');
   const [tab, setTab] = useState<Tab>('chat');
@@ -155,6 +157,7 @@ export default function MobileApp() {
     try {
       const cfg = await invoke<AppConfig>('get_app_config');
       const merged = { ...DEFAULT_CONFIG, ...cfg };
+      applyLocalePref(merged.locale);
       setConfig(merged);
       if (merged.lastCwd) setCwd(merged.lastCwd);
       if (merged.model) setModel(merged.model);
@@ -205,7 +208,14 @@ export default function MobileApp() {
       const st = payload?.status;
       if (st) setConn(st);
       if (st === 'open') setError('');
-      if (st === 'closed') setError('电脑端连接已断开，正在重连…');
+      if (st === 'closed') setError(t('电脑端连接已断开，正在重连…', 'Desktop connection closed. Reconnecting…'));
+    }).then((fn) => unsubs.push(fn));
+
+    listen<AppConfig>('app-config', (cfg) => {
+      if (!cfg) return;
+      const merged = { ...DEFAULT_CONFIG, ...cfg };
+      applyLocalePref(merged.locale);
+      setConfig(merged);
     }).then((fn) => unsubs.push(fn));
 
     listen<Record<string, unknown>>('companion-state', (snap) => {
@@ -273,11 +283,11 @@ export default function MobileApp() {
         setAskRequest(null);
         setExitPlan(null);
         setMessages((items) => items.map((m) => ({ ...m, streaming: false })));
-        setError(payload.error || 'Grok 请求失败');
+        setError(payload.error || t('Grok 请求失败', 'Grok request failed'));
         return;
       }
       if (payload.kind === 'protocol_error') {
-        setError(payload.error || 'ACP 协议错误');
+        setError(payload.error || t('ACP 协议错误', 'ACP protocol error'));
         return;
       }
       if (payload.kind === 'request' && payload.method === 'session/request_permission') {
@@ -371,7 +381,7 @@ export default function MobileApp() {
         });
       } else if (kind === 'tool_call') {
         const toolId = String(update.toolCallId || uid('tool'));
-        const title = String(update.title || update.toolCallId || '工具调用');
+        const title = String(update.title || update.toolCallId || t('工具调用', 'Tool call'));
         const detail = textFrom(update.content ?? '');
         setMessages((items) => [
           ...items.map((m) => ({ ...m, streaming: false })),
@@ -401,7 +411,7 @@ export default function MobileApp() {
                 role: 'tool',
                 text: detail,
                 toolId,
-                toolTitle: title || '工具调用',
+                toolTitle: title || t('工具调用', 'Tool call'),
                 toolStatus: status || 'in_progress',
                 ts: Date.now(),
               },
@@ -470,7 +480,7 @@ export default function MobileApp() {
     async (resume?: string, cwdOverride?: string) => {
       const dir = cwdOverride || cwdRef.current;
       if (!dir) {
-        setError('电脑端还没有工作区，请先在桌面选择项目文件夹');
+        setError(t('电脑端还没有工作区，请先在桌面选择项目文件夹', 'The desktop has no workspace yet. Choose a project folder on the Mac.'));
         return undefined;
       }
       setBusy(true);
@@ -624,19 +634,18 @@ export default function MobileApp() {
       <div className="m-app">
         <div className="m-pair">
           <img src={grokLogo} alt="" width={40} height={40} />
-          <h1>连接电脑上的 Grok Build</h1>
-          <p>在桌面设置里打开「手机联动」，用相机扫描二维码，或把链接粘贴到这里。</p>
+          <h1>{t('连接电脑上的 Grok Build', 'Connect to Grok Build on this Mac')}</h1>
+          <p>{t('在桌面设置里打开「手机联动」，用相机扫描二维码，或把链接粘贴到这里。', 'On the desktop, open Settings → Phone companion, then scan the QR code or paste the link here.')}</p>
           <input
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="粘贴链接或令牌"
+            placeholder={t('粘贴链接或令牌', 'Paste a link or token')}
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
           />
           <button className="m-btn" type="button" onClick={onPair} disabled={!tokenInput.trim()}>
-            连接
-          </button>
+            {t('连接', 'Connect')}</button>
         </div>
       </div>
     );
@@ -647,10 +656,10 @@ export default function MobileApp() {
       <div className="m-app">
         <div className="m-offline">
           {conn === 'connecting' ? <Loader2 className="spin" size={28} /> : <WifiOff size={28} />}
-          <h1>{conn === 'connecting' ? '正在连接电脑…' : '电脑端未连接'}</h1>
+          <h1>{conn === 'connecting' ? t('正在连接电脑…', 'Connecting to the desktop…') : t('电脑端未连接', 'Desktop is not connected')}</h1>
           <p>
             {error ||
-              '请确认 Mac 上的 Grok Build 已打开，并且设置里的「手机联动」处于开启状态。手机和电脑要在同一 Wi-Fi 或 Tailscale 网里。'}
+              t('请确认 Mac 上的 Grok Build 已打开，并且设置里的「手机联动」处于开启状态。手机和电脑要在同一 Wi-Fi 或 Tailscale 网里。', 'Keep Grok Build open on the Mac with Phone companion turned on. The phone and the Mac need the same Wi-Fi or Tailscale network.')}
           </p>
           <button
             className="m-btn"
@@ -664,8 +673,7 @@ export default function MobileApp() {
               });
             }}
           >
-            重试
-          </button>
+            {t('重试', 'Retry')}</button>
         </div>
       </div>
     );
@@ -674,19 +682,19 @@ export default function MobileApp() {
   return (
     <div className="m-app">
       <header className="m-header">
-        <span className={`m-dot ${conn === 'open' ? 'on' : ''}`} aria-label={conn === 'open' ? '已连接' : '未连接'} />
-        <strong>{tab === 'sessions' ? '会话' : sessionTitle}</strong>
+        <span className={`m-dot ${conn === 'open' ? 'on' : ''}`} aria-label={conn === 'open' ? t('已连接', 'Connected') : t('未连接', 'Not connected')} />
+        <strong>{tab === 'sessions' ? t('会话', 'Sessions') : sessionTitle}</strong>
         {tab === 'chat' && (
-          <button className="m-icon" type="button" aria-label="新建任务" onClick={() => void start()}>
+          <button className="m-icon" type="button" aria-label={t('新建任务', 'New task')} onClick={() => void start()}>
             <MessageSquarePlus size={20} />
           </button>
         )}
       </header>
-      {conn !== 'open' && <p className="m-banner warn">{error || '正在重连电脑端…'}</p>}
+      {conn !== 'open' && <p className="m-banner warn">{error || t('正在重连电脑端…', 'Reconnecting to the desktop…')}</p>}
       {error && conn === 'open' && (
         <p className="m-banner">
           {error}
-          <button className="m-icon" type="button" aria-label="关闭" onClick={() => setError('')}>
+          <button className="m-icon" type="button" aria-label={t('关闭', 'Close')} onClick={() => setError('')}>
             <X size={16} />
           </button>
         </p>
@@ -696,9 +704,8 @@ export default function MobileApp() {
         {tab === 'sessions' ? (
           <div className="m-sessions">
             <button className="m-new" type="button" onClick={() => void start()}>
-              新建任务
-            </button>
-            {workspaces.length === 0 && <div className="m-empty">电脑端还没有工作区。请先在桌面选择一个项目文件夹。</div>}
+              {t('新建任务', 'New task')}</button>
+            {workspaces.length === 0 && <div className="m-empty">{t('电脑端还没有工作区。请先在桌面选择一个项目文件夹。', 'The desktop has no workspace yet. Choose a project folder on the Mac.')}</div>}
             {workspaces.map((ws) => (
               <section key={ws}>
                 <div className="m-ws">{ws.split('/').filter(Boolean).at(-1) || ws}</div>
@@ -763,7 +770,7 @@ export default function MobileApp() {
                 onAddAttachments={() => {}}
                 onRemoveAttachment={() => {}}
                 allowAttachments={false}
-                placeholder={cwd ? '给 Grok 一个任务…' : '请先在「会话」里选工作区'}
+                placeholder={cwd ? t('给 Grok 一个任务…', 'Give Grok a task…') : t('请先在「会话」里选工作区', 'Choose a workspace in Sessions first')}
                 mode={mode}
                 modeBusy={modeBusy}
                 availableModes={availableModes}
@@ -805,12 +812,10 @@ export default function MobileApp() {
       <nav className="m-tabs">
         <button type="button" className={tab === 'chat' ? 'active' : ''} onClick={() => setTab('chat')}>
           <Smartphone size={20} />
-          聊天
-        </button>
+          {t('聊天', 'Chat')}</button>
         <button type="button" className={tab === 'sessions' ? 'active' : ''} onClick={() => setTab('sessions')}>
           <MessageSquarePlus size={20} />
-          会话
-        </button>
+          {t('会话', 'Sessions')}</button>
       </nav>
     </div>
   );

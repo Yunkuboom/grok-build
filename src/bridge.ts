@@ -1,3 +1,4 @@
+import { t } from './i18n';
 /** Unified invoke/listen: Tauri IPC on desktop, WebSocket JSON-RPC on the phone PWA. */
 
 type Unlisten = () => void;
@@ -95,7 +96,7 @@ function handleWsMessage(raw: string) {
   const slot = pending.get(id)!;
   pending.delete(id);
   if (data.ok) slot.resolve(data.result);
-  else slot.reject(new Error(String(data.error || '请求失败')));
+  else slot.reject(new Error(String(data.error || t('请求失败', 'Request failed'))));
 }
 
 function scheduleReconnect(token: string) {
@@ -127,14 +128,14 @@ function openWs(token: string): Promise<void> {
     sock.onerror = () => {
       if (gen !== connectGen) return;
       emitLocal('companion-connection', { status: 'error' });
-      reject(new Error('无法连接电脑端'));
+      reject(new Error(t('无法连接电脑端', 'Cannot reach the desktop')));
     };
     sock.onclose = () => {
       if (gen !== connectGen) return;
       ws = null;
       wsReady = null;
       for (const [id, slot] of pending) {
-        slot.reject(new Error('电脑端连接已断开'));
+        slot.reject(new Error(t('电脑端连接已断开', 'Desktop connection closed')));
         pending.delete(id);
       }
       emitLocal('companion-connection', { status: 'closed' });
@@ -148,7 +149,7 @@ function openWs(token: string): Promise<void> {
 }
 
 export function connectCompanion(token = companionTokenFromLocation()): Promise<void> {
-  if (!token) return Promise.reject(new Error('缺少配对令牌，请重新扫描电脑上的二维码'));
+  if (!token) return Promise.reject(new Error(t('缺少配对令牌，请重新扫描电脑上的二维码', 'Missing pairing token. Scan the QR code on the desktop again')));
   return openWs(token);
 }
 
@@ -169,7 +170,7 @@ async function invokeWs(cmd: string, args?: Record<string, unknown>): Promise<un
   }
   const sock = ws;
   if (!sock || sock.readyState !== WebSocket.OPEN) {
-    throw new Error('电脑端未连接');
+    throw new Error(t('电脑端未连接', 'Desktop is not connected'));
   }
   const id = nextId++;
   return new Promise((resolve, reject) => {

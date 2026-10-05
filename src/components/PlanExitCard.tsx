@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { ExitPlanOutcome, ExitPlanRequest } from '../types';
 import Markdown from './Markdown';
 import { Check, Loader2, Pencil, ScrollText, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   request: ExitPlanRequest;
@@ -29,21 +31,21 @@ export default function PlanExitCard({ request, onSubmit }: Props) {
     <div className="permission-card plan-exit-card">
       <div className="permission-head">
         <ScrollText size={16} />
-        <strong>计划待批准</strong>
+        <strong>{t('计划待批准', 'Plan awaiting approval')}</strong>
       </div>
 
       <div className="plan-exit-content md-preview">
         {request.planContent ? (
           <Markdown>{request.planContent}</Markdown>
         ) : (
-          <span className="muted">（未附带计划内容）</span>
+          <span className="muted">{t('（未附带计划内容）', '(no plan text was attached)')}</span>
         )}
       </div>
 
       {feedbackOpen && (
         <textarea
           className="plan-exit-feedback"
-          placeholder="输入修改意见，Grok 会按此调整计划…"
+          placeholder={t('输入修改意见，Grok 会按此调整计划…', 'Tell Grok what to change in the plan…')}
           value={feedback}
           autoFocus
           rows={3}
@@ -54,7 +56,7 @@ export default function PlanExitCard({ request, onSubmit }: Props) {
       <div className="permission-actions">
         <button type="button" disabled={submitting} onClick={() => void send('approved')}>
           {submitting ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-          批准执行
+          {t('批准执行', 'Approve and run')}
         </button>
         {feedbackOpen ? (
           <button
@@ -64,8 +66,7 @@ export default function PlanExitCard({ request, onSubmit }: Props) {
             onClick={() => void send('request_changes', feedback.trim())}
           >
             <Pencil size={14} />
-            提交修改意见
-          </button>
+            {t('提交修改意见', 'Send changes')}</button>
         ) : (
           <button
             type="button"
@@ -74,8 +75,7 @@ export default function PlanExitCard({ request, onSubmit }: Props) {
             onClick={() => setFeedbackOpen(true)}
           >
             <Pencil size={14} />
-            要求修改
-          </button>
+            {t('要求修改', 'Request changes')}</button>
         )}
         <button
           type="button"
@@ -84,8 +84,7 @@ export default function PlanExitCard({ request, onSubmit }: Props) {
           onClick={() => void send('abandoned')}
         >
           <X size={14} />
-          继续规划
-        </button>
+          {t('继续规划', 'Keep planning')}</button>
       </div>
     </div>
   );

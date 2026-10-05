@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import type { TreeNode } from '../types';
 import Markdown from './Markdown';
 import { RefreshCw, X } from '../icons';
+import { t } from '../i18n';
+
 
 type ArtifactKind = 'md' | 'html';
 
@@ -110,24 +112,24 @@ export default function ArtifactsPanel({ open, cwd, onClose }: Props) {
   return (
     <aside className="artifacts-panel">
       <div className="artifacts-tabs">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.path}
+            key={tab.path}
             type="button"
-            className={`artifact-tab ${t.path === active?.path ? 'active' : ''}`}
-            onClick={() => setActivePath(t.path)}
-            title={t.path}
+            className={`artifact-tab ${tab.path === active?.path ? 'active' : ''}`}
+            onClick={() => setActivePath(tab.path)}
+            title={tab.path}
           >
-            <span className={`file-badge ${t.kind === 'html' ? 'html' : ''}`}>
-              {t.kind === 'html' ? 'H' : 'M'}
+            <span className={`file-badge ${tab.kind === 'html' ? 'html' : ''}`}>
+              {tab.kind === 'html' ? 'H' : 'M'}
             </span>
-            <span className="name">{t.name}</span>
+            <span className="name">{tab.name}</span>
             <span
               className="tab-x"
-              title="关闭"
+              title={t('关闭', 'Close')}
               onClick={(e) => {
                 e.stopPropagation();
-                closeTab(t.path);
+                closeTab(tab.path);
               }}
             >
               ×
@@ -135,10 +137,10 @@ export default function ArtifactsPanel({ open, cwd, onClose }: Props) {
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <button className="icon-btn tiny soft" type="button" title="刷新列表" onClick={() => void refresh()}>
+        <button className="icon-btn tiny soft" type="button" title={t('刷新列表', 'Refresh list')} onClick={() => void refresh()}>
           <RefreshCw size={13} />
         </button>
-        <button className="icon-btn tiny" type="button" title="关闭侧栏" onClick={onClose}>
+        <button className="icon-btn tiny" type="button" title={t('关闭侧栏', 'Hide sidebar')} onClick={onClose}>
           <X size={14} />
         </button>
       </div>
@@ -163,14 +165,14 @@ export default function ArtifactsPanel({ open, cwd, onClose }: Props) {
       ) : (
         <div className="artifacts-body">
           {error && <div className="artifacts-empty">{error}</div>}
-          {loading && <div className="artifacts-empty">扫描工作区…</div>}
-          {!cwd && <div className="artifacts-empty">先选择工作区，以扫描 .md / .html 产出物。</div>}
+          {loading && <div className="artifacts-empty">{t('扫描工作区…', 'Scanning the workspace…')}</div>}
+          {!cwd && <div className="artifacts-empty">{t('先选择工作区，以扫描 .md / .html 产出物。', 'Choose a workspace to scan for .md / .html artifacts.')}</div>}
           {cwd && !loading && !files.length && !error && (
-            <div className="artifacts-empty">未在工作区找到 .md / .html 文件。</div>
+            <div className="artifacts-empty">{t('未在工作区找到 .md / .html 文件。', 'No .md or .html files in this workspace.')}</div>
           )}
           {!!files.length && (
             <div className="artifacts-list">
-              <div className="muted pad-sm">工作区中的产出物（{files.length}）</div>
+              <div className="muted pad-sm">{t('工作区中的产出物', 'Workspace artifacts')} ({files.length})</div>
               {files.map((f) => (
                 <button key={f.relative} type="button" title={f.relative} onClick={() => void openFile(f)}>
                   {f.relative}

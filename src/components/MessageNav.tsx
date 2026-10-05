@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { t } from '../i18n';
+
 
 interface Props {
   userMessages: Array<{ id: string; text: string }>;
@@ -34,7 +36,7 @@ export default function MessageNav({ userMessages, onJump }: Props) {
               setOpen(true);
               e.currentTarget.blur();
             }}
-            aria-label={`第 ${i + 1} 条你的消息`}
+            aria-label={t(`第 ${i + 1} 条你的消息`, `Your message ${i + 1}`)}
           />
         ))}
       </div>

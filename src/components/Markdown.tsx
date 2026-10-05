@@ -2,6 +2,8 @@ import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CopyButton from './CopyButton';
+import { t } from '../i18n';
+
 
 function extractText(node: ReactNode): string {
   if (node === null || node === undefined || typeof node === 'boolean') return '';
@@ -20,7 +22,7 @@ function PreBlock({ children }: { children?: ReactNode }) {
       <CopyButton
         className="codeblock-copy"
         text={extractText(children).replace(/\n$/, '')}
-        title="复制代码"
+        title={t('复制代码', 'Copy code')}
         size={13}
       />
     </div>

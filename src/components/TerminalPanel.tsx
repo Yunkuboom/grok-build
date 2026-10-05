@@ -6,6 +6,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { Plus, X } from '../icons';
+import { t } from '../i18n';
+
 
 type TermTab = {
   id: string;
@@ -118,7 +120,7 @@ export default function TerminalPanel({ open, cwd, onClose }: Props) {
       });
       ptyId = res.id;
     } catch (e) {
-      term.writeln(`\r\n\x1b[31mPTY 创建失败: ${String(e)}\x1b[0m`);
+      term.writeln(t(`\r\n\x1b[31mPTY 创建失败: ${String(e)}\x1b[0m`, `\r\n\x1b[31mFailed to create PTY: ${String(e)}\x1b[0m`));
       term.dispose();
       return;
     }
@@ -156,7 +158,7 @@ export default function TerminalPanel({ open, cwd, onClose }: Props) {
             const { id, code } = ev.payload;
             for (const [tabId, entry] of termsRef.current.entries()) {
               if (entry.ptyId === id) {
-                entry.term.writeln(`\r\n\x1b[90m[进程退出，代码 ${code}]\x1b[0m`);
+                entry.term.writeln(t(`\r\n\x1b[90m[进程退出，代码 ${code}]\x1b[0m`, `\r\n\x1b[90m[process exited, code ${code}]\x1b[0m`));
                 setTabs((prev) =>
                   prev.map((t) => (t.id === tabId ? { ...t, exited: true, title: `${t.title} ✕` } : t)),
                 );
@@ -240,22 +242,22 @@ export default function TerminalPanel({ open, cwd, onClose }: Props) {
   return (
     <div className="terminal-panel">
       <div className="terminal-header">
-        <span className="terminal-title">终端</span>
+        <span className="terminal-title">{t('终端', 'Terminal')}</span>
         <div className="terminal-tabs">
-          {tabs.map((t) => (
+          {tabs.map((tab) => (
             <button
-              key={t.id}
+              key={tab.id}
               type="button"
-              className={`terminal-tab ${t.id === activeId ? 'active' : ''}`}
-              onClick={() => setActiveId(t.id)}
+              className={`terminal-tab ${tab.id === activeId ? 'active' : ''}`}
+              onClick={() => setActiveId(tab.id)}
             >
-              <span>{t.title}</span>
+              <span>{tab.title}</span>
               <span
                 className="tab-x"
-                title="关闭标签"
+                title={t('关闭标签', 'Close tab')}
                 onClick={(e) => {
                   e.stopPropagation();
-                  void closeTab(t.id);
+                  void closeTab(tab.id);
                 }}
               >
                 ×
@@ -264,10 +266,10 @@ export default function TerminalPanel({ open, cwd, onClose }: Props) {
           ))}
         </div>
         <div className="terminal-header-actions">
-          <button className="icon-btn tiny" type="button" title="新建终端" onClick={addTab}>
+          <button className="icon-btn tiny" type="button" title={t('新建终端', 'New terminal')} onClick={addTab}>
             <Plus size={14} />
           </button>
-          <button className="icon-btn tiny" type="button" title="收起面板" onClick={onClose}>
+          <button className="icon-btn tiny" type="button" title={t('收起面板', 'Collapse panel')} onClick={onClose}>
             <X size={14} />
           </button>
         </div>

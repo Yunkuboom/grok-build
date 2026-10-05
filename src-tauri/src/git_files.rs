@@ -162,7 +162,7 @@ fn git_output(cwd: &str, args: &[&str]) -> Result<(bool, String, String), String
         .spawn()
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                "未找到 git 命令".to_string()
+                crate::i18n::t("未找到 git 命令", "git was not found")
             } else {
                 format!("git spawn failed: {e}")
             }
@@ -183,7 +183,7 @@ fn git_output(cwd: &str, args: &[&str]) -> Result<(bool, String, String), String
             kill_pid(pid);
             // Drain so the worker thread can exit
             let _ = rx.recv_timeout(Duration::from_millis(300));
-            Err("git 超时（仓库过大或扫到家目录）".into())
+            Err(crate::i18n::t("git 超时（仓库过大或扫到家目录）", "git timed out (the repo is large, or the scan reached the home directory)"))
         }
     }
 }
@@ -430,11 +430,11 @@ pub fn read_workdir_file(cwd: String, path: String) -> Result<String, String> {
     }
     let meta = std::fs::metadata(&target).map_err(|e| e.to_string())?;
     if meta.len() > MAX_READ_BYTES {
-        return Err("文件超过 2 MB 预览限制".into());
+        return Err(crate::i18n::t("文件超过 2 MB 预览限制", "File is over the 2 MB preview limit"));
     }
     let bytes = std::fs::read(&target).map_err(|e| e.to_string())?;
     if looks_binary(&bytes) {
-        return Err("暂不预览二进制文件".into());
+        return Err(crate::i18n::t("暂不预览二进制文件", "Binary files are not previewed"));
     }
     Ok(String::from_utf8_lossy(&bytes).to_string())
 }
@@ -450,7 +450,7 @@ fn git_diff_file_inner(
         return Ok(DiffResult {
             ok: false,
             text: String::new(),
-            message: "未选择工作目录".into(),
+            message: crate::i18n::t("未选择工作目录", "No workspace selected"),
         });
     }
     // Ensure path under cwd (even if file doesn't exist yet for deleted)
@@ -471,7 +471,7 @@ fn git_diff_file_inner(
             return Ok(DiffResult {
                 ok: false,
                 text: String::new(),
-                message: "当前目录不是 git 仓库".into(),
+                message: crate::i18n::t("当前目录不是 git 仓库", "This folder is not a git repository"),
             });
         }
         Err(e) => {
@@ -497,7 +497,7 @@ fn git_diff_file_inner(
                 ok: false,
                 text: String::new(),
                 message: if err.trim().is_empty() {
-                    "无变更".into()
+                    crate::i18n::t("无变更", "No changes")
                 } else {
                     err.trim().to_string()
                 },
@@ -508,7 +508,7 @@ fn git_diff_file_inner(
             ok: true,
             text: out,
             message: if empty {
-                "无变更".into()
+                crate::i18n::t("无变更", "No changes")
             } else {
                 String::new()
             },
@@ -554,7 +554,7 @@ fn git_diff_file_inner(
                         return Ok(DiffResult {
                             ok: true,
                             text: diff,
-                            message: "未跟踪文件（显示为新增）".into(),
+                            message: crate::i18n::t("未跟踪文件（显示为新增）", "Untracked file (shown as added)"),
                         });
                     }
                     Err(e) => {
@@ -571,7 +571,7 @@ fn git_diff_file_inner(
             ok: false,
             text: String::new(),
             message: if err1.trim().is_empty() {
-                "无变更".into()
+                crate::i18n::t("无变更", "No changes")
             } else {
                 err1.trim().to_string()
             },
@@ -624,14 +624,14 @@ fn git_diff_file_inner(
                     return Ok(DiffResult {
                         ok: true,
                         text: diff,
-                        message: "未跟踪文件（显示为新增）".into(),
+                        message: crate::i18n::t("未跟踪文件（显示为新增）", "Untracked file (shown as added)"),
                     });
                 }
             }
             return Ok(DiffResult {
                 ok: true,
                 text: String::new(),
-                message: "无变更".into(),
+                message: crate::i18n::t("无变更", "No changes"),
             });
         }
         return Ok(DiffResult {
@@ -698,7 +698,7 @@ fn git_status_inner(cwd: String) -> Result<GitStatusResult, String> {
             is_repo: false,
             branch: String::new(),
             entries: vec![],
-            error: Some("未选择工作目录".into()),
+            error: Some(crate::i18n::t("未选择工作目录", "No workspace selected")),
             warning: None,
         });
     }
@@ -708,7 +708,7 @@ fn git_status_inner(cwd: String) -> Result<GitStatusResult, String> {
                 is_repo: false,
                 branch: String::new(),
                 entries: vec![],
-                error: Some("当前目录不是 git 仓库".into()),
+                error: Some(crate::i18n::t("当前目录不是 git 仓库", "This folder is not a git repository")),
                 warning: None,
             });
         }
@@ -730,7 +730,7 @@ fn git_status_inner(cwd: String) -> Result<GitStatusResult, String> {
     if let Some(ref top) = toplevel {
         if same_path_as_home(top) {
             warnings
-                .push("仓库根在家目录 (~)，仅显示当前文件夹下的变更；建议删掉误建的 ~/.git".into());
+                .push(crate::i18n::t("仓库根在家目录 (~)，仅显示当前文件夹下的变更；建议删掉误建的 ~/.git", "The repo root is the home directory (~). Only changes under the current folder are shown. Remove an accidental ~/.git if you created one."));
         }
     }
 
@@ -753,7 +753,7 @@ fn git_status_inner(cwd: String) -> Result<GitStatusResult, String> {
             branch: current_branch(&cwd),
             entries: vec![],
             error: Some(if err.trim().is_empty() {
-                "git status 失败".into()
+                crate::i18n::t("git status 失败", "git status failed")
             } else {
                 err.trim().to_string()
             }),
@@ -781,7 +781,7 @@ fn git_status_inner(cwd: String) -> Result<GitStatusResult, String> {
         }
     }
     if truncated {
-        warnings.push(format!("变更过多，仅显示前 {MAX_STATUS_ENTRIES} 条"));
+        warnings.push((if crate::i18n::is_en() { format!("Too many changes. Showing the first {MAX_STATUS_ENTRIES}") } else { format!("变更过多，仅显示前 {MAX_STATUS_ENTRIES} 条") }));
     }
 
     Ok(GitStatusResult {
@@ -815,7 +815,7 @@ fn git_stage_inner(cwd: String, paths: Vec<String>) -> Result<(), String> {
         .filter(|p| !p.is_empty())
         .collect();
     if owned.is_empty() {
-        return Err("没有要暂存的文件".into());
+        return Err(crate::i18n::t("没有要暂存的文件", "No files to stage"));
     }
     let mut args: Vec<&str> = vec!["add", "--"];
     for p in &owned {
@@ -826,7 +826,7 @@ fn git_stage_inner(cwd: String, paths: Vec<String>) -> Result<(), String> {
         Ok(())
     } else {
         Err(if err.trim().is_empty() {
-            "git add 失败".into()
+            crate::i18n::t("git add 失败", "git add failed")
         } else {
             err.trim().to_string()
         })
@@ -851,7 +851,7 @@ fn git_unstage_inner(cwd: String, paths: Vec<String>) -> Result<(), String> {
         .filter(|p| !p.is_empty())
         .collect();
     if owned.is_empty() {
-        return Err("没有要取消暂存的文件".into());
+        return Err(crate::i18n::t("没有要取消暂存的文件", "No files to unstage"));
     }
     // Prefer restore --staged; fallback to reset HEAD --
     let mut args: Vec<&str> = vec!["restore", "--staged", "--"];
@@ -877,7 +877,7 @@ fn git_unstage_inner(cwd: String, paths: Vec<String>) -> Result<(), String> {
             .collect::<Vec<_>>()
             .join("; ");
         Err(if msg.is_empty() {
-            "取消暂存失败".into()
+            crate::i18n::t("取消暂存失败", "Could not unstage")
         } else {
             msg
         })
@@ -898,12 +898,12 @@ fn git_commit_inner(cwd: String, message: String) -> Result<String, String> {
         return Err("cwd required".into());
     }
     if message.is_empty() {
-        return Err("提交说明不能为空".into());
+        return Err(crate::i18n::t("提交说明不能为空", "Commit message cannot be empty"));
     }
     // Ensure something is staged
     let (ok_st, st_out, _) = git_output(&cwd, &["diff", "--cached", "--name-only"])?;
     if !ok_st || st_out.trim().is_empty() {
-        return Err("没有已暂存的变更".into());
+        return Err(crate::i18n::t("没有已暂存的变更", "Nothing is staged"));
     }
     let (ok, out, err) = git_output(&cwd, &["commit", "-m", &message])?;
     if ok {
@@ -930,7 +930,7 @@ fn git_branches_inner(cwd: String) -> Result<GitBranchesResult, String> {
         return Ok(GitBranchesResult {
             current: String::new(),
             branches: vec![],
-            error: Some("未选择工作目录".into()),
+            error: Some(crate::i18n::t("未选择工作目录", "No workspace selected")),
         });
     }
     match is_git_repo(&cwd) {
@@ -938,7 +938,7 @@ fn git_branches_inner(cwd: String) -> Result<GitBranchesResult, String> {
             return Ok(GitBranchesResult {
                 current: String::new(),
                 branches: vec![],
-                error: Some("当前目录不是 git 仓库".into()),
+                error: Some(crate::i18n::t("当前目录不是 git 仓库", "This folder is not a git repository")),
             });
         }
         Err(e) => {
@@ -983,7 +983,7 @@ fn git_checkout_inner(cwd: String, branch: String) -> Result<(), String> {
     let cwd = cwd.trim().to_string();
     let branch = branch.trim().to_string();
     if cwd.is_empty() || branch.is_empty() {
-        return Err("cwd 与分支名均为必填".into());
+        return Err(crate::i18n::t("cwd 与分支名均为必填", "Both the workspace and the branch name are required"));
     }
     // Prefer switch, fallback checkout
     let (ok, _, err) = git_output(&cwd, &["switch", &branch])?;
@@ -1001,7 +1001,7 @@ fn git_checkout_inner(cwd: String, branch: String) -> Result<(), String> {
             .collect::<Vec<_>>()
             .join("; ");
         Err(if msg.is_empty() {
-            "切换分支失败".into()
+            crate::i18n::t("切换分支失败", "Could not switch branch")
         } else {
             msg
         })

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { DiffResult, GitBranchesResult, GitStatusEntry, GitStatusResult } from '../types';
 import { RefreshCw, X } from '../icons';
+import { t } from '../i18n';
+
 
 interface Props {
   open: boolean;
@@ -10,7 +12,7 @@ interface Props {
 }
 
 function DiffLines({ text }: { text: string }) {
-  if (!text.trim()) return <div className="dock-muted pad-sm">无差异内容</div>;
+  if (!text.trim()) return <div className="dock-muted pad-sm">{t('无差异内容', 'No diff')}</div>;
   return (
     <pre className="diff-pre">
       {text.split('\n').map((line, i) => {
@@ -45,7 +47,7 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
   const refresh = useCallback(async () => {
     if (!cwd) {
       setIsRepo(false);
-      setError('未选择工作目录');
+      setError(t('未选择工作目录', 'No workspace selected'));
       setEntries([]);
       setBranch('');
       setBranches([]);
@@ -110,28 +112,28 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
   const onStage = (paths: string[]) =>
     run(async () => {
       await invoke('git_stage', { cwd, paths });
-      setInfo(`已暂存 ${paths.length} 个文件`);
+      setInfo(t(`已暂存 ${paths.length} 个文件`, `Staged ${paths.length} files`));
     });
 
   const onUnstage = (paths: string[]) =>
     run(async () => {
       await invoke('git_unstage', { cwd, paths });
-      setInfo(`已取消暂存 ${paths.length} 个文件`);
+      setInfo(t(`已取消暂存 ${paths.length} 个文件`, `Unstaged ${paths.length} files`));
     });
 
   const onCommit = () =>
     run(async () => {
       const msg = message.trim();
-      if (!msg) throw new Error('提交说明不能为空');
+      if (!msg) throw new Error(t('提交说明不能为空', 'Commit message cannot be empty'));
       const out = await invoke<string>('git_commit', { cwd, message: msg });
       setMessage('');
-      setInfo(out || '提交成功');
+      setInfo(out || t('提交成功', 'Commit created'));
     });
 
   const onCheckout = (name: string) =>
     run(async () => {
       await invoke('git_checkout', { cwd, branch: name });
-      setInfo(`已切换到 ${name}`);
+      setInfo(t(`已切换到 ${name}`, `Switched to ${name}`));
     });
 
   const showDiff = async (path: string, isStaged: boolean) => {
@@ -160,19 +162,17 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
       <button
         type="button"
         className={`git-path git-path-btn ${diffFor === e.path ? 'active' : ''}`}
-        title={`${e.path}（点击查看 diff）`}
+        title={t(`${e.path}（点击查看 diff）`, `${e.path} (click to view the diff)`)}
         onClick={() => void showDiff(e.path, kind === 'staged')}
       >
         {e.path}
       </button>
       {kind === 'staged' ? (
         <button type="button" disabled={busy} onClick={() => void onUnstage([e.path])}>
-          取消
-        </button>
+          {t('取消', 'Cancel')}</button>
       ) : (
         <button type="button" disabled={busy} onClick={() => void onStage([e.path])}>
-          暂存
-        </button>
+          {t('暂存', 'Stage')}</button>
       )}
     </div>
   );
@@ -188,21 +188,21 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
           <button
             className="icon-btn tiny soft"
             type="button"
-            title="刷新"
+            title={t('刷新', 'Refresh')}
             disabled={busy}
             onClick={() => void refresh()}
           >
             <RefreshCw size={13} />
           </button>
-          <button className="icon-btn tiny" type="button" title="关闭" onClick={onClose}>
+          <button className="icon-btn tiny" type="button" title={t('关闭', 'Close')} onClick={onClose}>
             <X size={14} />
           </button>
         </div>
       </div>
 
       <div className="git-panel-body">
-        {!cwd && <div className="dock-empty">请先选择工作区文件夹</div>}
-        {cwd && busy && <div className="dock-muted pad-sm">加载中…</div>}
+        {!cwd && <div className="dock-empty">{t('请先选择工作区文件夹', 'Choose a workspace folder first')}</div>}
+        {cwd && busy && <div className="dock-muted pad-sm">{t('加载中…', 'Loading…')}</div>}
         {cwd && error && !isRepo && <div className="dock-empty">{error}</div>}
         {cwd && isRepo && (
           <>
@@ -212,23 +212,22 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
 
             <section className="git-section">
               <div className="git-section-head">
-                <span>已暂存（{staged.length}）</span>
+                <span>{t('已暂存', 'Staged')} ({staged.length})</span>
                 <button
                   type="button"
                   className="linkish"
                   disabled={busy || !staged.length}
                   onClick={() => void onUnstage(staged.map((e) => e.path))}
                 >
-                  全部取消
-                </button>
+                  {t('全部取消', 'Unstage all')}</button>
               </div>
-              {!staged.length && <div className="dock-muted pad-sm">无</div>}
+              {!staged.length && <div className="dock-muted pad-sm">{t('无', 'None')}</div>}
               {staged.map((e) => fileRow(e, 'staged'))}
             </section>
 
             <section className="git-section">
               <div className="git-section-head">
-                <span>已更改（{changed.length}）</span>
+                <span>{t('已更改', 'Changed')} ({changed.length})</span>
                 <button
                   type="button"
                   className="linkish"
@@ -237,18 +236,17 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
                     void onStage([...changed.map((e) => e.path), ...untracked.map((e) => e.path)])
                   }
                 >
-                  全部暂存
-                </button>
+                  {t('全部暂存', 'Stage all')}</button>
               </div>
-              {!changed.length && <div className="dock-muted pad-sm">无</div>}
+              {!changed.length && <div className="dock-muted pad-sm">{t('无', 'None')}</div>}
               {changed.map((e) => fileRow(e, 'changed'))}
             </section>
 
             <section className="git-section">
               <div className="git-section-head">
-                <span>未跟踪（{untracked.length}）</span>
+                <span>{t('未跟踪', 'Untracked')} ({untracked.length})</span>
               </div>
-              {!untracked.length && <div className="dock-muted pad-sm">无</div>}
+              {!untracked.length && <div className="dock-muted pad-sm">{t('无', 'None')}</div>}
               {untracked.map((e) => fileRow(e, 'untracked'))}
             </section>
 
@@ -266,8 +264,7 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
                       setDiff(null);
                     }}
                   >
-                    关闭
-                  </button>
+                    {t('关闭', 'Close')}</button>
                 </div>
                 {diff ? (
                   <>
@@ -275,19 +272,19 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
                     <DiffLines text={diff.text} />
                   </>
                 ) : (
-                  <div className="dock-muted pad-sm">加载 diff…</div>
+                  <div className="dock-muted pad-sm">{t('加载 diff…', 'Loading diff…')}</div>
                 )}
               </section>
             )}
 
             <section className="git-section">
               <div className="git-section-head">
-                <span>提交</span>
+                <span>{t('提交', 'Commit')}</span>
               </div>
               <textarea
                 className="git-commit-msg"
                 rows={3}
-                placeholder="提交说明…"
+                placeholder={t('提交说明…', 'Commit message…')}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
@@ -295,16 +292,16 @@ export default function GitPanel({ open, cwd, onClose }: Props) {
                 type="button"
                 className="git-commit-btn"
                 disabled={busy || !message.trim() || !staged.length}
-                title={!staged.length ? '没有已暂存的变更' : ''}
+                title={!staged.length ? t('没有已暂存的变更', 'Nothing staged') : ''}
                 onClick={() => void onCommit()}
               >
-                提交{staged.length ? `（${staged.length} 个文件）` : ''}
+                {t('提交', 'Commit')}{staged.length ? t(`（${staged.length} 个文件）`, ` (${staged.length} files)`) : ''}
               </button>
             </section>
 
             <section className="git-section">
               <div className="git-section-head">
-                <span>分支</span>
+                <span>{t('分支', 'Branch')}</span>
               </div>
               <select
                 className="git-branch-select"

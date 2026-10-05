@@ -11,7 +11,7 @@ import type {
   SessionModeInfo,
   TreeNode,
 } from '../types';
-import { PERMISSION_MODES } from '../types';
+import { permissionModes } from '../types';
 import {
   ArrowUp,
   AtSign,
@@ -31,6 +31,7 @@ import {
   TerminalSquare,
   X,
 } from '../icons';
+import { t } from '../i18n';
 
 interface Props {
   value: string;
@@ -87,7 +88,7 @@ export default function Composer({
   onAddAttachments,
   onRemoveAttachment,
   floating = false,
-  placeholder = '给 Grok 一个任务…',
+  placeholder = t('给 Grok 一个任务…', 'Give Grok a task…'),
   mode,
   modeBusy = false,
   availableModes,
@@ -115,13 +116,13 @@ export default function Composer({
   const composingRef = useRef(false);
   const compositionEndAtRef = useRef(0);
 
-  const modeMeta: PermissionModeMeta | undefined = PERMISSION_MODES.find((m) => m.id === mode);
+  const modeMeta: PermissionModeMeta | undefined = permissionModes().find((m) => m.id === mode);
   const modeList: PermissionModeMeta[] = availableModes.length
     ? availableModes.map((m) => {
-        const known = PERMISSION_MODES.find((p) => p.id === m.id);
+        const known = permissionModes().find((p) => p.id === m.id);
         return known || { id: m.id, label: m.name || m.id, hint: '' };
       })
-    : PERMISSION_MODES;
+    : permissionModes();
 
   useEffect(() => {
     if (floating) ref.current?.focus();
@@ -221,17 +222,17 @@ export default function Composer({
     ref.current?.focus();
   };
 
-  const modelLabel = models.find((m) => m.id === model)?.name || model || '默认模型';
-  const effortLabel = effortOptions.find((o) => o.value === effort)?.label || effort || '默认强度';
+  const modelLabel = models.find((m) => m.id === model)?.name || model || t('默认模型', 'Default model');
+  const effortLabel = effortOptions.find((o) => o.value === effort)?.label || effort || t('默认强度', 'Default effort');
 
   const pickFiles = async () => {
     try {
       const selected = await open({
         multiple: true,
         filters: [
-          { name: '图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
+          { name: t('图片', 'Images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
           {
-            name: '文档',
+            name: t('文档', 'Documents'),
             extensions: [
               'md', 'txt', 'pdf', 'json', 'csv', 'js', 'jsx', 'ts', 'tsx', 'py', 'rs',
               'html', 'css', 'xml', 'yaml', 'yml', 'toml', 'doc', 'docx', 'xls', 'xlsx',
@@ -260,7 +261,7 @@ export default function Composer({
 
   return (
     <div className={`composer-card ${floating ? 'floating' : 'docked'} ${dragOver ? 'drag-over' : ''}`}>
-      {dragOver && <div className="attach-drop-hint">松开以添加附件</div>}
+      {dragOver && <div className="attach-drop-hint">{t('松开以添加附件', 'Drop to attach')}</div>}
       {completeOpen && (
         <div className="dropdown-menu complete-menu">
           {slashActive ? (
@@ -285,7 +286,7 @@ export default function Composer({
               ))
             ) : (
               <div className="dropdown-empty">
-                {commands.length ? '无匹配命令' : '开始会话后可用'}
+                {commands.length ? t('无匹配命令', 'No matching command') : t('开始会话后可用', 'Available after a session starts')}
               </div>
             )
           ) : (
@@ -337,7 +338,7 @@ export default function Composer({
                 type="button"
                 className="attach-x"
                 disabled={busy}
-                aria-label={`移除附件 ${a.name}`}
+                aria-label={t(`移除附件 ${a.name}`, `Remove attachment ${a.name}`)}
                 onClick={() => onRemoveAttachment(a.path)}
               >
                 <X size={11} />
@@ -410,7 +411,7 @@ export default function Composer({
         <button
           className="icon-btn soft"
           type="button"
-          title="添加附件"
+          title={t('添加附件', 'Add attachment')}
           onClick={() => void pickFiles()}
         >
           <Paperclip size={15} />
@@ -422,15 +423,15 @@ export default function Composer({
           tabIndex={0}
           title={
             modeBusy
-              ? '正在切换模式（重启 agent）…'
+              ? t('正在切换模式（重启 agent）…', 'Switching mode (restarting the agent)…')
               : sessionActive
-                ? '切换当前会话权限模式'
-                : '新会话将使用的权限模式'
+                ? t('切换当前会话权限模式', 'Change permission mode for this session')
+                : t('新会话将使用的权限模式', 'Permission mode for new sessions')
           }
           onClick={modeBusy ? undefined : toggle('mode')}
         >
           <Shield size={14} />
-          <span>{modeMeta?.label || PERMISSION_MODES.find((m) => m.id === mode)?.label || '计划'}</span>
+          <span>{modeMeta?.label || permissionModes().find((m) => m.id === mode)?.label || t('计划', 'Plan')}</span>
           {modeBusy ? <Loader2 size={12} className="spin" /> : <ChevronDown size={12} />}
           {openMenu === 'mode' && (
             <div className="dropdown-menu mode-menu" onClick={(e) => e.stopPropagation()}>
@@ -456,7 +457,7 @@ export default function Composer({
           className="model-chip"
           role="button"
           tabIndex={0}
-          title={sessionActive ? '切换当前会话模型' : '新会话将使用的模型'}
+          title={sessionActive ? t('切换当前会话模型', 'Change model for this session') : t('新会话将使用的模型', 'Model for new sessions')}
           onClick={toggle('model')}
         >
           <Cpu size={14} />
@@ -464,7 +465,7 @@ export default function Composer({
           <ChevronDown size={12} />
           {openMenu === 'model' && (
             <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
-              {!models.length && <div className="dropdown-empty">未取得模型目录</div>}
+              {!models.length && <div className="dropdown-empty">{t('未取得模型目录', 'Model list is unavailable')}</div>}
               {models.map((m) => (
                 <button
                   key={m.id}
@@ -477,7 +478,7 @@ export default function Composer({
                 >
                   <span>
                     {m.name}
-                    {m.isDefault ? '（默认）' : ''}
+                    {m.isDefault ? t('（默认）', '(default)') : ''}
                   </span>
                   <small>{m.id}</small>
                 </button>
@@ -490,7 +491,7 @@ export default function Composer({
           className="model-chip"
           role="button"
           tabIndex={0}
-          title={sessionActive ? '切换当前会话推理强度' : '新会话将使用的推理强度'}
+          title={sessionActive ? t('切换当前会话推理强度', 'Change reasoning effort for this session') : t('新会话将使用的推理强度', 'Reasoning effort for new sessions')}
           onClick={toggle('effort')}
         >
           <Brain size={14} />
@@ -506,7 +507,7 @@ export default function Composer({
                   setOpenMenu(null);
                 }}
               >
-                <span>跟随 CLI 默认</span>
+                <span>{t('跟随 CLI 默认', 'Follow the CLI default')}</span>
               </button>
               {effortOptions.map((o) => (
                 <button
@@ -532,7 +533,7 @@ export default function Composer({
           <button
             className={`icon-btn soft remember-btn ${rememberState === 'done' ? 'done' : ''}`}
             type="button"
-            title={rememberDisabled ? '自动记忆已关闭' : '记住这条'}
+            title={rememberDisabled ? t('自动记忆已关闭', 'Auto memory is off') : t('记住这条', 'Remember this')}
             disabled={rememberDisabled || rememberState === 'saving'}
             onClick={onRememberNote}
           >
@@ -550,13 +551,13 @@ export default function Composer({
           <button
             className={`send-circle ${value.trim() ? 'queue-send' : 'stop'}`}
             type="button"
-            aria-label={value.trim() ? '加入发送队列' : '停止生成'}
+            aria-label={value.trim() ? t('加入发送队列', 'Queue message') : t('停止生成', 'Stop')}
             title={
               value.trim()
-                ? '排队，当前轮结束后自动发送'
+                ? t('排队，当前轮结束后自动发送', 'Queued. Sends when the current turn finishes')
                 : pendingRequests
-                  ? '停止（将自动拒绝所有待批准请求）'
-                  : '停止生成'
+                  ? t('停止（将自动拒绝所有待批准请求）', 'Stop (pending approvals will be rejected)')
+                  : t('停止生成', 'Stop')
             }
             onClick={value.trim() ? onSend : onStop}
           >
@@ -566,7 +567,7 @@ export default function Composer({
           <button
             className="send-circle"
             type="button"
-            title="发送"
+            title={t('发送', 'Send')}
             disabled={!value.trim()}
             onClick={onSend}
           >
