@@ -42,6 +42,9 @@
       "app",
       "dmg"
     ],
+    "resources": {
+      "../dist/": "dist/"
+    },
     "macOS": {
       "signingIdentity": null,
       "minimumSystemVersion": "10.15"

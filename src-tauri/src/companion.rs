@@ -642,12 +642,17 @@ fn mime_of(path: &str) -> &'static str {
 fn static_roots(app: &AppHandle) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Ok(dir) = app.path().resource_dir() {
+        roots.push(dir.join("dist"));
         roots.push(dir.clone());
         roots.push(dir.join("_up_"));
     }
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    roots.push(manifest.join("../dist"));
-    roots.push(manifest.join("../public"));
+    // Dev fallback only. A release binary must not embed the build machine path.
+    #[cfg(debug_assertions)]
+    {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        roots.push(manifest.join("../dist"));
+        roots.push(manifest.join("../public"));
+    }
     roots
 }
 

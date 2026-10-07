@@ -34,10 +34,15 @@ Settings → Theme and language. The default follows the system language. Chines
 ```bash
 npm install
 npm run tauri dev      # 开发模式
-npm run tauri build    # 产出：
-                       #   src-tauri/target/release/bundle/macos/Grok Build.app
-                       #   src-tauri/target/release/bundle/dmg/Grok Build_0.1.0_aarch64.dmg
 ```
+
+Apple Silicon 发布包（手机页面打进 .app，去掉本机构建路径，资源放齐后再 ad hoc 签名，最后做 DMG）：
+
+```bash
+bash scripts/macos-release.sh
+```
+
+产物在 `src-tauri/target/release/bundle/`：`macos/Grok Build.app` 与 `dmg/Grok Build_<version>_aarch64.dmg`。脚本按 `tauri.conf.json` 的版本号命名 DMG。这是本机 ad hoc 签名，不是 Developer ID，也没有 Apple 公证，其他 Mac 的 Gatekeeper 可能拒绝打开。
 
 前提：已安装并登录 Grok CLI（`~/.grok/bin/grok` 或 `~/.local/bin/grok`，开发基线为 v1.0.25）。未登录时在应用内点登录，会在 Terminal.app 里完成官方 OAuth/设备码认证。应用不内置 API Key。
 

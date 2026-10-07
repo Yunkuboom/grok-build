@@ -22,6 +22,14 @@ Tauri 注入的 drag.js 处理 `[data-tauri-drag-region]` 的 mousedown 时调 `
 - 全套图标用 `npx tauri icon <源png>` 生成到 `src-tauri/icons/`。
 - 源图是 webp 时先转 png：`sips -s format png in.webp --out out.png`（`tauri icon` 不认 webp）。
 
+## 发布签名
+
+`npm run tauri build` 留下的是链接器 ad hoc 签名（`linker-signed`）。这种签名声明资源必须存在，但没有密封 `Resources`，`codesign --verify --deep --strict` 会报 `code has no resources but signature indicates they must be present`。
+
+发布顺序固定为：先把手机页面放进 `Contents/Resources/dist`，再对完整 `.app` 执行 `codesign --force --sign -`，签名后不再改包内文件，最后用 `hdiutil` 做 DMG。`scripts/macos-release.sh` 按这个顺序做，并用 `--remap-path-prefix` 去掉本机构建路径。不要把用户名、主目录或构建目录写进仓库。
+
+这只是 ad hoc 签名。没有 Developer ID，也没有公证。不要把它写成 Gatekeeper 已通过。
+
 ## DMG 打包失败排查
 
 `npm run tauri build` 里 `bundle_dmg.sh` 失败（常见报错为资源忙/无法附加），九成是系统残留的挂载卷：

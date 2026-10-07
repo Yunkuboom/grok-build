@@ -57,9 +57,9 @@ PLAN.md / ACCEPTANCE.md     Codex 时代的历史文档，不维护，别当真
 npm install                 # 装依赖
 npm run build               # tsc + vite build，前端改动后的检查
 npm run tauri dev           # 开发模式（热更新 + Rust 后端）
-npm run tauri build         # 出 .app + DMG：
-                            #   src-tauri/target/release/bundle/macos/Grok Build.app
-                            #   src-tauri/target/release/bundle/dmg/Grok Build_0.1.0_aarch64.dmg
+bash scripts/macos-release.sh
+                            # Apple Silicon 发布包：路径重映射、手机页面进 Resources、
+                            # 资源放齐后 ad hoc 签名，再出 DMG。不是 Developer ID，未公证。
 cd src-tauri && cargo build # 仅编后端（改 rs 后的快速检查）
 ```
 
