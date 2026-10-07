@@ -41,18 +41,6 @@ npm run tauri build    # 产出：
 
 前提：已安装并登录 Grok CLI（`~/.grok/bin/grok` 或 `~/.local/bin/grok`，开发基线为 v1.0.25）。未登录时在应用内点登录，会在 Terminal.app 里完成官方 OAuth/设备码认证。应用不内置 API Key。
 
-## 用户自己的配置
-
-这些文件留在本机，不要提交进仓库：
-
-- `~/.grok-builder/config.json`：应用设置，首次保存时生成。
-- `~/.grok-builder/identity-rules.md`：可选。文件存在且非空时，内容会注入 agent 的 `--rules`；开启自动记忆后，还会用标记 `<!-- grok-build-identity -->` 播种到 `~/.grok/memory/MEMORY.md` 一次。示例见 [docs/identity-rules.example.md](docs/identity-rules.example.md)。
-- `~/.grok-builder/memo-retrieval.py`：可选。未安装 `memo-kb` 时的只读检索回退脚本。
-- `~/.grok-builder/companion.json`：手机配对令牌，打开手机联动时在本机生成，权限 `0600`。
-- 环境变量 `GROK_BIN`：仅在 `grok` 不在默认查找路径时使用。见 [.env.example](.env.example)。
-
-手机页面由桌面进程在 `8788` 端口提供，不单独发布客户端密钥。配对令牌只出现在本机二维码和手机浏览器里。
-
 ## 文档索引
 
 - [AGENTS.md](AGENTS.md) — **接手开发入口**：目录结构、命令、修改铁律、验证清单。
@@ -62,6 +50,3 @@ npm run tauri build    # 产出：
 - [docs/TAURI-MACOS.md](docs/TAURI-MACOS.md) — Tauri macOS 踩坑指南（窗口拖拽/图标/DMG/CSP）。
 - PLAN.md / ACCEPTANCE.md — 早期设计/验收文档，仅存档参考。
 
-## 致谢
-
-UI 设计语言参考了 openclaude 桌面项目：浅色 chrome、工作区圆角、侧栏布局与 git 面板的 Rust 实现思路均源自该项目。该项目的许可证只覆盖被复制的部分，不覆盖本仓库整体。本仓库自身的许可证尚未选定。
